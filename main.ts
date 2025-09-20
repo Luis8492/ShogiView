@@ -131,8 +131,12 @@ export default class ShogiKifViewer extends Plugin {
           const cell = boardHost.createDiv({ cls: 'cell' });
           const P = board[r-1][f-1];
           if (P) {
-            cell.setText(P.kind);
-            if (P.side==='W') cell.style.opacity = '0.75';
+            const pieceEl = cell.createSpan({ cls: 'piece', text: P.kind });
+            if (P.side === 'W') {
+              pieceEl.addClass('piece-opponent');
+            } else {
+              pieceEl.addClass('piece-player');
+            }
           }
           if (lastTo && lastTo.f===f && lastTo.r===r) cell.addClass('highlight-to');
           if (lastFrom && lastFrom.f===f && lastFrom.r===r) cell.addClass('highlight-from');
