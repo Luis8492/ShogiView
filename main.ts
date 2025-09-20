@@ -33,17 +33,20 @@ function parseSquare(s: string): { f:number; r:number } {
 
 function initialBoard(): (Piece|null)[][] {
   // 9x9 [rank(1..9)][file(1..9)] as [r-1][f-1]
-  const B:(Piece|null)[][] = Array.from({length:9},()=>Array(9).fill(null));
-  const put = (f:number,r:number,kind:PieceKind, side:Side) => { B[r-1][f-1] = {kind, side}; };
-  // --- 後手(W) 上段 ---
-  put(1,9,'香','W'); put(2,9,'桂','W'); put(3,9,'銀','W'); put(4,9,'金','W'); put(5,9,'王','W'); put(6,9,'金','W'); put(7,9,'銀','W'); put(8,9,'桂','W'); put(9,9,'香','W');
-  put(2,8,'飛','W'); put(8,8,'角','W');
-  for (let f=1; f<=9; f++) put(f,7,'歩','W');
-  // --- 先手(B) 下段 ---
-  for (let f=1; f<=9; f++) put(f,3,'歩','B');
-  put(2,2,'角','B'); put(8,2,'飛','B');
-  put(1,1,'香','B'); put(2,1,'桂','B'); put(3,1,'銀','B'); put(4,1,'金','B'); put(5,1,'玉','B'); put(6,1,'金','B'); put(7,1,'銀','B'); put(8,1,'桂','B'); put(9,1,'香','B');
-  return B;
+  // 段はKIF表記と同じ順序で、段1が後手側最上段、段9が先手側最下段
+  const board:(Piece|null)[][] = Array.from({length:9},()=>Array(9).fill(null));
+  const put = (f:number,r:number,kind:PieceKind, side:Side) => { board[r-1][f-1] = {kind, side}; };
+
+  // --- 後手(W): 段1〜3 ---
+  put(1,1,'香','W'); put(2,1,'桂','W'); put(3,1,'銀','W'); put(4,1,'金','W'); put(5,1,'王','W'); put(6,1,'金','W'); put(7,1,'銀','W'); put(8,1,'桂','W'); put(9,1,'香','W');
+  put(8,2,'飛','W'); put(2,2,'角','W');
+  for (let f=1; f<=9; f++) put(f,3,'歩','W');
+
+  // --- 先手(B): 段7〜9 ---
+  for (let f=1; f<=9; f++) put(f,7,'歩','B');
+  put(2,8,'飛','B'); put(8,8,'角','B');
+  put(1,9,'香','B'); put(2,9,'桂','B'); put(3,9,'銀','B'); put(4,9,'金','B'); put(5,9,'玉','B'); put(6,9,'金','B'); put(7,9,'銀','B'); put(8,9,'桂','B'); put(9,9,'香','B');
+  return board;
 }
 
 function cloneBoard(B:(Piece|null)[][]){
@@ -94,9 +97,9 @@ function parseKif(text: string): { header: Record<string,string>, moves: Move[] 
 }
 
 function squareToDisplayIndex(f:number,r:number): { row:number; col:number } {
-  // Board UI left-to-right: file 9..1, top-to-bottom: rank 9..1
-  // Given shogi coords (f:1..9 right->left from Sente, r:1..9 near->far), map to grid row/col
-  const row = 9 - r;         // r=9 => row 0 (top)
+  // Board UI left-to-right: file 9..1, top-to-bottom: rank 1..9
+  // Given shogi coords (f:1..9 right->left from Sente, r:1..9 bottom->top for Sente), map to grid row/col
+  const row = r - 1;         // r=1 => row 0 (top)
   const col = 9 - f;         // f=9 => col 0 (left)
   return { row, col };
 }
@@ -126,7 +129,7 @@ export default class ShogiKifViewer extends Plugin {
 
     function renderBoard(){
       boardHost.empty();
-      for (let r=9; r>=1; r--) {
+      for (let r=1; r<=9; r++) {
         for (let f=9; f>=1; f--) {
           const cell = boardHost.createDiv({ cls: 'cell' });
           const P = board[r-1][f-1];
