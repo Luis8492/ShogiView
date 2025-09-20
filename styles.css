@@ -8,6 +8,26 @@ display: flex;
 gap: 6px;
 margin-bottom: 8px;
 }
+.shogi-kif .hands {
+display: flex;
+justify-content: center;
+align-items: center;
+gap: 6px;
+margin: 4px 0;
+flex-wrap: wrap;
+font-size: 0.9em;
+}
+.shogi-kif .hands-label {
+font-weight: 600;
+}
+.shogi-kif .hand-piece {
+padding: 2px 6px;
+border-radius: 4px;
+background: var(--background-secondary);
+}
+.shogi-kif .hands-empty {
+opacity: 0.6;
+}
 .shogi-kif .board {
 display: grid;
 grid-template-columns: repeat(9, 36px);

@@ -10,6 +10,7 @@ interface Move {
   to: { f: number; r: number }; // 先(行き先): file(筋)1-9, rank(段)1-9
   from?: { f: number; r: number };// 元位置 例: (27)
   kind?: PieceKind;      // 記載の駒
+  drop?: boolean;        // 持ち駒からの打ち
   comment?: string;      // * コメント
   timestamp?: string;    // ( 0:12/00:00:12) など
 }
@@ -56,13 +57,30 @@ function cloneBoard(B:(Piece|null)[][]){
   return B.map(row=>row.map(c=>c?{...c}:null));
 }
 
+function demoteKind(kind: PieceKind): PieceKind {
+  switch (kind) {
+    case 'と': return '歩';
+    case '成香': return '香';
+    case '成桂': return '桂';
+    case '成銀': return '銀';
+    case '馬': return '角';
+    case '龍': return '飛';
+    default: return kind;
+  }
+}
+
+const HAND_PIECE_ORDER: PieceKind[] = ['飛','角','金','銀','桂','香','歩','玉','王'];
+
+type Hands = Record<Side, PieceKind[]>;
+
 // Very small KIF move parser for lines like:
 // "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
 function parseKif(text: string): { header: Record<string,string>, moves: Move[] } {
   const header: Record<string,string> = {};
   const moves: Move[] = [];
   const lines = text.split(/\r?\n/);
-  const moveRe = /^\s*(\d+)\s+((?:同(?:\s|　)?)|[１２３４５６７８９1-9一二三四五六七八九]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
+  const piecePattern = '(成香|成桂|成銀|馬|龍|と|歩|香|桂|銀|金|角|飛|玉|王)';
+  const moveRe = new RegExp(`^\\s*(\\d+)\\s+((?:同(?:\\s|　)?)|[${JP_NUM_FULL}1-9${JP_NUM_KANJI}]{2})${piecePattern}(打?)(?:\\((\\d{2})\\))?(?:\\(([^\\)]*)\\))?`);
   // captures: n, toSquare, piece, fromXY?, timestamp?
   let lastMove: Move|undefined;
 
@@ -93,14 +111,15 @@ function parseKif(text: string): { header: Record<string,string>, moves: Move[] 
       }
       if (!to) continue;
       const kind = m[3] as PieceKind;
+      const drop = m[4] === '打';
       let from: {f:number;r:number}|undefined;
-      if (m[4]) {
-        const f = parseInt(m[4][0],10);
-        const r = parseInt(m[4][1],10);
+      if (m[5]) {
+        const f = parseInt(m[5][0],10);
+        const r = parseInt(m[5][1],10);
         from = { f, r };
       }
-      const timestamp = m[5]?.trim();
-      const mv: Move = { n, to, from, kind, timestamp };
+      const timestamp = m[6]?.trim();
+      const mv: Move = { n, to, from, kind, drop, timestamp };
       moves.push(mv);
       lastMove = mv;
     }
@@ -126,6 +145,7 @@ export default class ShogiKifViewer extends Plugin {
     const { header, moves } = parseKif(src);
 
     let board = initialBoard();
+    let hands: Hands = { B: [], W: [] };
     let moveIdx = 0; // 0 = initial, 1..N = after that move
     let lastFrom: {f:number;r:number}|undefined;
     let lastTo: {f:number;r:number}|undefined;
@@ -136,7 +156,10 @@ export default class ShogiKifViewer extends Plugin {
     const btnNext  = toolbar.createEl('button', { text: '一手進む ▶' });
     const btnLast  = toolbar.createEl('button', { text: '最後 ⏭' });
 
+    const handOpponent = container.createDiv({ cls: 'hands hands-opponent' });
     const boardHost = container.createDiv({ cls: 'board' });
+    const handPlayer = container.createDiv({ cls: 'hands hands-player' });
+    const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
     const meta = container.createDiv({ cls: 'meta' });
 
     function renderBoard(){
@@ -165,25 +188,77 @@ export default class ShogiKifViewer extends Plugin {
       meta.setText(info);
     }
 
+    function renderHands(){
+      const sides: Side[] = ['W', 'B'];
+      for (const side of sides) {
+        const div = handDisplays[side];
+        div.empty();
+        const label = side === 'B' ? '先手' : '後手';
+        div.createSpan({ cls: 'hands-label', text: `${label}持ち駒: ` });
+        const pieces = hands[side];
+        if (!pieces.length) {
+          div.createSpan({ cls: 'hands-empty', text: 'なし' });
+          continue;
+        }
+        const counts = new Map<PieceKind, number>();
+        for (const k of pieces) {
+          counts.set(k, (counts.get(k) ?? 0) + 1);
+        }
+        for (const kind of HAND_PIECE_ORDER) {
+          const cnt = counts.get(kind);
+          if (!cnt) continue;
+          div.createSpan({ cls: 'hand-piece', text: cnt > 1 ? `${kind}${cnt}` : kind });
+          counts.delete(kind);
+        }
+        for (const [kind, cnt] of counts) {
+          div.createSpan({ cls: 'hand-piece', text: cnt > 1 ? `${kind}${cnt}` : kind });
+        }
+      }
+    }
+
     function applyUpTo(idx:number){
       board = initialBoard();
+      hands = { B: [], W: [] };
       lastFrom = lastTo = undefined;
-      // Very naive move applier: uses explicit (from) if present, ignores promotions/drops, handles simple capture
+      // Very naive move applier: uses explicit (from) if present, handles simple captures and drops, still ignores promotions
       for (let i=0; i<idx; i++) {
         const mv = moves[i];
         if (!mv) break;
         const from = mv.from;
         const to = mv.to;
-        if (!from) continue; // MVP: require (xx) source
-        const src = board[from.r-1][from.f-1];
-        if (!src) continue;
-        // move piece
-        board[to.r-1][to.f-1] = src; // capture if any
-        board[from.r-1][from.f-1] = null;
-        lastFrom = from; lastTo = to;
+        if (!to) continue;
+        const side: Side = (i % 2 === 0) ? 'B' : 'W';
+        let moving: Piece | null = null;
+        if (mv.drop) {
+          const dropKind = demoteKind(mv.kind ?? '歩');
+          const hand = hands[side];
+          const idxInHand = hand.findIndex(k => k === dropKind);
+          if (idxInHand >= 0) hand.splice(idxInHand, 1);
+          moving = { side, kind: dropKind };
+          lastFrom = undefined;
+        } else if (from) {
+          const src = board[from.r-1][from.f-1];
+          if (!src) continue;
+          moving = { ...src };
+          board[from.r-1][from.f-1] = null;
+          lastFrom = from;
+        } else {
+          continue;
+        }
+
+        const target = board[to.r-1][to.f-1];
+        if (target && target.side !== side) {
+          const capturedKind = demoteKind(target.kind);
+          hands[side].push(capturedKind);
+        }
+        if (moving) {
+          board[to.r-1][to.f-1] = moving;
+        }
+        lastTo = to;
       }
       moveIdx = idx;
       renderBoard();
+      renderHands();
     }
 
     btnFirst.onclick = ()=> applyUpTo(0);
