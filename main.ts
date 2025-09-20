@@ -14,10 +14,13 @@ interface Move {
   timestamp?: string;    // ( 0:12/00:00:12) など
 }
 
-const JP_NUM = '１２３４５６７８９';
+const JP_NUM_FULL = '１２３４５６７８９';
+const JP_NUM_KANJI = '一二三四五六七八九';
 function jpDigitToNum(ch: string): number {
-  const idx = JP_NUM.indexOf(ch);
-  if (idx >= 0) return idx + 1;
+  const fullIdx = JP_NUM_FULL.indexOf(ch);
+  if (fullIdx >= 0) return fullIdx + 1;
+  const kanjiIdx = JP_NUM_KANJI.indexOf(ch);
+  if (kanjiIdx >= 0) return kanjiIdx + 1;
   const n = parseInt(ch, 10);
   if (!isNaN(n) && n>=1 && n<=9) return n;
   throw new Error('Invalid digit: '+ch);
@@ -59,7 +62,7 @@ function parseKif(text: string): { header: Record<string,string>, moves: Move[] 
   const header: Record<string,string> = {};
   const moves: Move[] = [];
   const lines = text.split(/\r?\n/);
-  const moveRe = /^\s*(\d+)\s+([１２３４５６７８９1-9]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
+  const moveRe = /^\s*(\d+)\s+([１２３４５６７８９1-9一二三四五六七八九]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
   // captures: n, toSquare, piece, fromXY?, timestamp?
   let lastMove: Move|undefined;
 
