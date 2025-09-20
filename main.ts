@@ -322,9 +322,10 @@ export default class ShogiKifViewer extends Plugin {
 
     const layout = container.createDiv({ cls: 'board-layout' });
     const boardArea = layout.createDiv({ cls: 'board-area' });
-    const handOpponent = boardArea.createDiv({ cls: 'hands hands-opponent' });
-    const boardHost = boardArea.createDiv({ cls: 'board' });
-    const handPlayer = boardArea.createDiv({ cls: 'hands hands-player' });
+    const boardWrapper = boardArea.createDiv({ cls: 'board-wrapper' });
+    const handOpponent = boardWrapper.createDiv({ cls: 'hands hands-opponent' });
+    const boardHost = boardWrapper.createDiv({ cls: 'board' });
+    const handPlayer = boardWrapper.createDiv({ cls: 'hands hands-player' });
     const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
     const meta = boardArea.createDiv({ cls: 'meta' });
     const commentsDiv = boardArea.createDiv({ cls: 'meta comments' });
@@ -379,11 +380,10 @@ export default class ShogiKifViewer extends Plugin {
       for (const side of sides) {
         const div = handDisplays[side];
         div.empty();
-        const label = side === 'B' ? '先手' : '後手';
-        div.createSpan({ cls: 'hands-label', text: `${label}持ち駒: ` });
         const pieces = hands[side];
         if (!pieces.length) {
-          div.createSpan({ cls: 'hands-empty', text: 'なし' });
+          const empty = div.createSpan({ cls: 'hands-empty', text: 'なし' });
+          if (side === 'W') empty.addClass('hand-piece-opponent');
           continue;
         }
         const counts = new Map<PieceKind, number>();
@@ -393,11 +393,19 @@ export default class ShogiKifViewer extends Plugin {
         for (const kind of HAND_PIECE_ORDER) {
           const cnt = counts.get(kind);
           if (!cnt) continue;
-          div.createSpan({ cls: 'hand-piece', text: cnt > 1 ? `${kind}${cnt}` : kind });
+          const span = div.createSpan({
+            cls: 'hand-piece',
+            text: cnt > 1 ? `${kind}${cnt}` : kind,
+          });
+          if (side === 'W') span.addClass('hand-piece-opponent');
           counts.delete(kind);
         }
         for (const [kind, cnt] of counts) {
-          div.createSpan({ cls: 'hand-piece', text: cnt > 1 ? `${kind}${cnt}` : kind });
+          const span = div.createSpan({
+            cls: 'hand-piece',
+            text: cnt > 1 ? `${kind}${cnt}` : kind,
+          });
+          if (side === 'W') span.addClass('hand-piece-opponent');
         }
       }
     }
