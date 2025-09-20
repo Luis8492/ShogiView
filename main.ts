@@ -1,4 +1,19 @@
 import { Plugin, MarkdownPostProcessorContext } from 'obsidian';
+
+
+const boardHost = container.createDiv({ cls: 'board' });
+const meta = container.createDiv({ cls: 'meta' });
+
+
+function renderBoard(){
+boardHost.empty();
+for (let r=9; r>=1; r--) {
+for (let f=9; f>=1; f--) {
+const cell = boardHost.createDiv({ cls: 'cell' });
+const P = board[r-1][f-1];
+if (P) {
+cell.setText(P.kind);
+if (P.side==='W') cell.style.opacity = '0.75';
 }
 if (lastTo && lastTo.f===f && lastTo.r===r) cell.addClass('highlight-to');
 if (lastFrom && lastFrom.f===f && lastFrom.r===r) cell.addClass('highlight-from');
@@ -68,22 +83,3 @@ btnLast.onclick = wrap(()=>applyUpTo(moves.length));
 updateComments();
 }
 }
-
-
-// =============================
-// Usage in a note
-// =============================
-// ```kif
-// # ---- ぴよ将棋 棋譜ファイル ----
-// 棋戦：ぴよ将棋
-// 戦型：△ツノ銀雁木
-// 開始日時：2025/09/20 17:38:04
-// 終了日時：2025/09/20 17:54:54
-// 手合割：平手
-// 先手：プレイヤー
-// 後手：プレイヤー
-// 手数----指手---------消費時間--
-// 1 ２六歩(27)( 0:12/00:00:12)
-// 2 ３四歩(33)( 0:05/00:00:05)
-// 3 ２五歩(26)( 0:01/00:00:13)
-// ```
