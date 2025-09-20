@@ -376,40 +376,16 @@ export default class ShogiKifViewer extends Plugin {
       const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
       const table = moveListBody.createEl('table', { cls: 'move-table' });
       const tbody = table.createEl('tbody');
-      const grouped = new Map<number, { n: number; B?: ParsedMove; W?: ParsedMove }>();
       for (const mv of displaySequence) {
-        const num = mv.n;
-        let entry = grouped.get(num);
-        if (!entry) {
-          entry = { n: num };
-          grouped.set(num, entry);
-        }
-        if (mv.n % 2 === 1) {
-          entry.B = mv;
-        } else {
-          entry.W = mv;
-        }
-      }
-      const ordered = Array.from(grouped.values()).sort((a, b) => a.n - b.n);
-      for (const entry of ordered) {
         const row = tbody.createEl('tr');
-        row.createEl('th', { text: entry.n.toString() });
-        const senteCell = row.createEl('td');
-        const goteCell = row.createEl('td');
-        if (entry.B) {
-          senteCell.setText(formatMoveLabel(entry.B));
-          if (executedMoves.has(entry.B)) senteCell.addClass('move-done');
-          if (latestMove && latestMove === entry.B) senteCell.addClass('move-current');
-        } else {
-          senteCell.addClass('move-empty');
-        }
-        if (entry.W) {
-          goteCell.setText(formatMoveLabel(entry.W));
-          if (executedMoves.has(entry.W)) goteCell.addClass('move-done');
-          if (latestMove && latestMove === entry.W) goteCell.addClass('move-current');
-        } else {
-          goteCell.addClass('move-empty');
-        }
+        row.createEl('th', { text: mv.n.toString() });
+        const cell = row.createEl('td');
+        const prefix = mv.n % 2 === 1 ? '▲' : '△';
+        const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
+        cell.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
+        cell.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
+        if (executedMoves.has(mv)) cell.addClass('move-done');
+        if (latestMove && latestMove === mv) cell.addClass('move-current');
       }
     }
 
