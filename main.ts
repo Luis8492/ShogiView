@@ -135,6 +135,12 @@ function parsePieceToken(token: string): PieceTokenInfo | null {
 
 const HAND_PIECE_ORDER: PieceKind[] = ['飛','角','金','銀','桂','香','歩','玉','王'];
 
+const PROMOTED_KINDS = new Set<PieceKind>(['と', '成香', '成桂', '成銀', '馬', '龍']);
+
+function isPromotedKind(kind: PieceKind): boolean {
+  return PROMOTED_KINDS.has(kind);
+}
+
 type Hands = Record<Side, PieceKind[]>;
 
 // Very small KIF move parser for lines like:
@@ -367,6 +373,9 @@ export default class ShogiKifViewer extends Plugin {
             } else {
               pieceEl.addClass('piece-player');
             }
+            if (isPromotedKind(piece.kind)) {
+              pieceEl.addClass('piece-promoted');
+            }
           }
           if (lastTo && lastTo.f === f && lastTo.r === r) cell.addClass('highlight-to');
           if (lastFrom && lastFrom.f === f && lastFrom.r === r) cell.addClass('highlight-from');
@@ -438,7 +447,10 @@ export default class ShogiKifViewer extends Plugin {
         const prefix = mv.n % 2 === 1 ? '▲' : '△';
         const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
         cell.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-        cell.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
+        const moveText = cell.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
+        if (mv.kind && isPromotedKind(mv.kind)) {
+          moveText.addClass('move-text-promoted');
+        }
         if (executedMoves.has(mv)) cell.addClass('move-done');
         if (latestMove && latestMove === mv) cell.addClass('move-current');
       }
