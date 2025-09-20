@@ -12,6 +12,22 @@ interface Move {
   kind?: PieceKind;      // 記載の駒
   comment?: string;      // * コメント
   timestamp?: string;    // ( 0:12/00:00:12) など
+  notation?: string;     // 元の指し手表記
+  drop?: boolean;        // 打つ手かどうか
+  variations: VariationLine[];
+}
+
+interface VariationLine {
+  startFrom: number;           // この変化が始まる直前の手数（0始まり）
+  firstMoveNumber: number;     // 変化の最初の手数（startFrom+1）
+  moves: Move[];               // 変化の指し手
+  rootVariations: VariationLine[]; // 変化開始位置でさらに分岐がある場合
+}
+
+interface LineOption {
+  label: string;
+  path: VariationLine[];
+  moves: Move[];
 }
 
 const JP_NUM_FULL = '１２３４５６７８９';
@@ -56,56 +72,273 @@ function cloneBoard(B:(Piece|null)[][]){
   return B.map(row=>row.map(c=>c?{...c}:null));
 }
 
-// Very small KIF move parser for lines like:
-// "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
-function parseKif(text: string): { header: Record<string,string>, moves: Move[] } {
-  const header: Record<string,string> = {};
-  const moves: Move[] = [];
-  const lines = text.split(/\r?\n/);
-  const moveRe = /^\s*(\d+)\s+((?:同(?:\s|　)?)|[１２３４５６７８９1-9一二三四五六七八九]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
-  // captures: n, toSquare, piece, fromXY?, timestamp?
-  let lastMove: Move|undefined;
+const MOVE_LINE_RE = /^\s*(\d+)\s+(.*)$/;
+const VARIATION_LINE_RE = /^変化：(\d+)手/;
 
-  for (const raw of lines) {
-    const line = raw.trimEnd();
-    if (!line) continue;
-    if (line.startsWith('#') || line.startsWith('----')) continue;
-    if (line.includes('：')) {
-      const [k,v] = line.split('：');
-      if (k && v) header[k.trim()] = v.trim();
-      continue;
-    }
-    if (line.startsWith('*')) {
-      if (lastMove) lastMove.comment = (lastMove.comment? lastMove.comment+'\n': '') + line.slice(1).trim();
-      continue;
-    }
-    const m = line.match(moveRe);
+function parsePieceToken(token: string): { kind: PieceKind; rest: string } | null {
+  const patterns: Array<{ pattern: RegExp; kind: PieceKind }> = [
+    { pattern: /^成香/, kind: '成香' },
+    { pattern: /^成桂/, kind: '成桂' },
+    { pattern: /^成銀/, kind: '成銀' },
+    { pattern: /^と/, kind: 'と' },
+    { pattern: /^馬/, kind: '馬' },
+    { pattern: /^龍/, kind: '龍' },
+    { pattern: /^竜/, kind: '龍' },
+    { pattern: /^角成/, kind: '馬' },
+    { pattern: /^飛成/, kind: '龍' },
+    { pattern: /^銀成/, kind: '成銀' },
+    { pattern: /^桂成/, kind: '成桂' },
+    { pattern: /^香成/, kind: '成香' },
+    { pattern: /^歩成/, kind: 'と' },
+    { pattern: /^香/, kind: '香' },
+    { pattern: /^桂/, kind: '桂' },
+    { pattern: /^銀/, kind: '銀' },
+    { pattern: /^金/, kind: '金' },
+    { pattern: /^角/, kind: '角' },
+    { pattern: /^飛/, kind: '飛' },
+    { pattern: /^玉/, kind: '玉' },
+    { pattern: /^王/, kind: '王' },
+    { pattern: /^歩/, kind: '歩' },
+  ];
+  for (const entry of patterns) {
+    const m = token.match(entry.pattern);
     if (m) {
-      const n = parseInt(m[1],10);
-      const toToken = m[2].replace(/[\s　]/g, '');
-      let to: {f:number;r:number}|undefined;
-      if (toToken === '同') {
-        if (lastMove?.to) {
-          to = { ...lastMove.to };
-        }
-      } else {
-        to = parseSquare(toToken);
-      }
-      if (!to) continue;
-      const kind = m[3] as PieceKind;
-      let from: {f:number;r:number}|undefined;
-      if (m[4]) {
-        const f = parseInt(m[4][0],10);
-        const r = parseInt(m[4][1],10);
-        from = { f, r };
-      }
-      const timestamp = m[5]?.trim();
-      const mv: Move = { n, to, from, kind, timestamp };
-      moves.push(mv);
-      lastMove = mv;
+      return { kind: entry.kind, rest: token.slice(m[0].length) };
     }
   }
-  return { header, moves };
+  return null;
+}
+
+function parseMoveLine(raw: string, lastMove?: Move): Move | null {
+  const line = raw.trimEnd();
+  if (!line) return null;
+  const match = line.match(MOVE_LINE_RE);
+  if (!match) return null;
+  const n = parseInt(match[1], 10);
+  let rest = match[2].trimEnd();
+
+  let timestamp: string | undefined;
+  const timeMatch = rest.match(/\(([^()]+)\)\s*$/);
+  if (timeMatch && /[:\/]/.test(timeMatch[1])) {
+    timestamp = timeMatch[1].trim();
+    rest = rest.slice(0, timeMatch.index).trimEnd();
+  }
+
+  let from: { f: number; r: number } | undefined;
+  const fromMatch = rest.match(/\((\d{2})\)\s*$/);
+  if (fromMatch) {
+    const digits = fromMatch[1];
+    from = { f: parseInt(digits[0], 10), r: parseInt(digits[1], 10) };
+    rest = rest.slice(0, fromMatch.index).trimEnd();
+  }
+
+  const notation = rest.trim();
+  if (!notation) return null;
+
+  let work = notation.replace(/　/g, ' ').replace(/\s+/g, '');
+  if (!work) return null;
+
+  let to: { f: number; r: number } | undefined;
+  if (work.startsWith('同')) {
+    to = lastMove?.to ? { ...lastMove.to } : undefined;
+    work = work.slice(1);
+  } else {
+    const toMatch = work.match(/^([１２３４５６７８９1-9一二三四五六七八九]{2})/);
+    if (!toMatch) return null;
+    to = parseSquare(toMatch[1]);
+    work = work.slice(toMatch[0].length);
+  }
+  if (!to) return null;
+
+  let drop = false;
+  if (work.endsWith('打')) {
+    drop = true;
+    work = work.slice(0, -1);
+  }
+
+  const pieceInfo = parsePieceToken(work);
+  if (!pieceInfo) return null;
+  const { kind } = pieceInfo;
+
+  const move: Move = { n, to, from, kind, timestamp, notation, variations: [] };
+  if (drop) move.drop = true;
+  return move;
+}
+
+function parseVariation(
+  lines: string[],
+  startIndex: number,
+  fromMove: number,
+  baseMove?: Move
+): { variation: VariationLine; nextIndex: number } {
+  const base = fromMove - 1;
+  const { moves, rootVariations, nextIndex } = parseMoves(lines, startIndex, base, baseMove);
+  return {
+    variation: {
+      startFrom: base,
+      firstMoveNumber: fromMove,
+      moves,
+      rootVariations,
+    },
+    nextIndex,
+  };
+}
+
+function parseMoves(
+  lines: string[],
+  startIndex: number,
+  base: number,
+  initialLastMove?: Move
+): { moves: Move[]; rootVariations: VariationLine[]; nextIndex: number } {
+  const moves: Move[] = [];
+  const rootVariations: VariationLine[] = [];
+  const pending = new Map<number, VariationLine[]>();
+  let lastMove = initialLastMove;
+  let index = startIndex;
+
+  const attachVariation = (variation: VariationLine) => {
+    if (variation.startFrom <= base) {
+      rootVariations.push(variation);
+      return;
+    }
+    const target = moves.find((m) => m.n === variation.startFrom);
+    if (target) {
+      target.variations.push(variation);
+      return;
+    }
+    const bucket = pending.get(variation.startFrom) ?? [];
+    bucket.push(variation);
+    pending.set(variation.startFrom, bucket);
+  };
+
+  while (index < lines.length) {
+    const raw = lines[index];
+    const trimmed = raw.trimEnd();
+    const trimmedNoLead = trimmed.trimStart();
+    if (!trimmed) {
+      index++;
+      continue;
+    }
+    if (trimmedNoLead.startsWith('#') || trimmedNoLead.startsWith('----') || trimmedNoLead.startsWith('手数')) {
+      index++;
+      continue;
+    }
+    if (trimmedNoLead.startsWith('*')) {
+      if (lastMove) {
+        const comment = trimmedNoLead.slice(1).trim();
+        lastMove.comment = lastMove.comment ? `${lastMove.comment}\n${comment}` : comment;
+      }
+      index++;
+      continue;
+    }
+    const variationMatch = trimmedNoLead.match(VARIATION_LINE_RE);
+    if (variationMatch) {
+      const fromMove = parseInt(variationMatch[1], 10);
+      if (fromMove <= base) {
+        break;
+      }
+      const baseMoveNumber = fromMove - 1;
+      let baseMoveForVariation: Move | undefined;
+      if (baseMoveNumber === base) {
+        baseMoveForVariation = initialLastMove;
+      } else {
+        baseMoveForVariation = moves.find((m) => m.n === baseMoveNumber);
+      }
+      const { variation, nextIndex } = parseVariation(lines, index + 1, fromMove, baseMoveForVariation);
+      attachVariation(variation);
+      index = nextIndex;
+      continue;
+    }
+
+    const move = parseMoveLine(raw, lastMove);
+    if (move) {
+      const waiting = pending.get(move.n);
+      if (waiting) {
+        move.variations.push(...waiting);
+        pending.delete(move.n);
+      }
+      moves.push(move);
+      lastMove = move;
+    }
+    index++;
+  }
+
+  return { moves, rootVariations, nextIndex: index };
+}
+
+function parseKif(text: string): { header: Record<string, string>; moves: Move[]; rootVariations: VariationLine[] } {
+  const header: Record<string, string> = {};
+  const lines = text.split(/\r?\n/);
+  let index = 0;
+
+  while (index < lines.length) {
+    const raw = lines[index];
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      index++;
+      continue;
+    }
+    if (trimmed.startsWith('#') || trimmed.startsWith('----') || trimmed.startsWith('手数')) {
+      index++;
+      continue;
+    }
+    if (VARIATION_LINE_RE.test(trimmed) || MOVE_LINE_RE.test(trimmed)) {
+      break;
+    }
+    const parts = trimmed.split('：');
+    if (parts.length >= 2) {
+      const key = parts[0]?.trim();
+      const value = parts.slice(1).join('：').trim();
+      if (key && value) {
+        header[key] = value;
+      }
+    }
+    index++;
+  }
+
+  const { moves, rootVariations } = parseMoves(lines, index, 0);
+  return { header, moves, rootVariations };
+}
+
+function mergeMoves(baseMoves: Move[], variation: VariationLine): Move[] {
+  const start = variation.startFrom;
+  const prefix = baseMoves.filter((mv) => mv.n <= start);
+  return [...prefix, ...variation.moves];
+}
+
+function formatVariationLabel(variation: VariationLine): string {
+  const first = variation.moves[0];
+  if (first?.notation) {
+    return `変化 ${variation.firstMoveNumber}手: ${first.notation}`;
+  }
+  return `変化 ${variation.firstMoveNumber}手`;
+}
+
+function buildLineOptions(mainMoves: Move[], rootVariations: VariationLine[]): LineOption[] {
+  const options: LineOption[] = [{ label: '本譜', path: [], moves: mainMoves }];
+
+  const visit = (
+    context: { moves: Move[]; rootVariations: VariationLine[] },
+    currentMoves: Move[],
+    path: VariationLine[],
+    labels: string[]
+  ) => {
+    const variations: VariationLine[] = [];
+    if (context.rootVariations?.length) variations.push(...context.rootVariations);
+    for (const mv of context.moves) {
+      if (mv.variations?.length) variations.push(...mv.variations);
+    }
+    for (const variation of variations) {
+      const labelParts = [...labels, formatVariationLabel(variation)];
+      const lineMoves = mergeMoves(currentMoves, variation);
+      const newPath = [...path, variation];
+      options.push({ label: labelParts.join(' → '), path: newPath, moves: lineMoves });
+      visit(variation, lineMoves, newPath, labelParts);
+    }
+  };
+
+  visit({ moves: mainMoves, rootVariations }, mainMoves, [], []);
+  return options;
 }
 
 function squareToDisplayIndex(f:number,r:number): { row:number; col:number } {
@@ -123,7 +356,10 @@ export default class ShogiKifViewer extends Plugin {
 
   renderKif(src: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) {
     const container = el.createDiv({ cls: 'shogi-kif' });
-    const { header, moves } = parseKif(src);
+    const { header, moves: mainMoves, rootVariations } = parseKif(src);
+    const lineOptions = buildLineOptions(mainMoves, rootVariations);
+    let activeOption = lineOptions[0];
+    let activeMoves = activeOption.moves;
 
     let board = initialBoard();
     let moveIdx = 0; // 0 = initial, 1..N = after that move
@@ -135,6 +371,17 @@ export default class ShogiKifViewer extends Plugin {
     const btnPrev  = toolbar.createEl('button', { text: '◀ 一手戻る' });
     const btnNext  = toolbar.createEl('button', { text: '一手進む ▶' });
     const btnLast  = toolbar.createEl('button', { text: '最後 ⏭' });
+
+    let variationSelect: HTMLSelectElement | null = null;
+    if (lineOptions.length > 1) {
+      toolbar.createSpan({ text: '変化:' });
+      variationSelect = toolbar.createEl('select');
+      variationSelect.addClass('variation-select');
+      lineOptions.forEach((opt, idx) => {
+        variationSelect!.createEl('option', { value: String(idx), text: opt.label });
+      });
+      variationSelect.value = '0';
+    }
 
     const boardHost = container.createDiv({ cls: 'board' });
     const meta = container.createDiv({ cls: 'meta' });
@@ -160,7 +407,7 @@ export default class ShogiKifViewer extends Plugin {
       const info = [
         header['棋戦']?`棋戦: ${header['棋戦']}`:undefined,
         header['戦型']?`戦型: ${header['戦型']}`:undefined,
-        moveIdx>0 && moves[moveIdx-1]?.timestamp?`消費時間: ${moves[moveIdx-1].timestamp}`:undefined
+        moveIdx>0 && activeMoves[moveIdx-1]?.timestamp?`消費時間: ${activeMoves[moveIdx-1].timestamp}`:undefined
       ].filter(Boolean).join(' / ');
       meta.setText(info);
     }
@@ -170,7 +417,7 @@ export default class ShogiKifViewer extends Plugin {
       lastFrom = lastTo = undefined;
       // Very naive move applier: uses explicit (from) if present, ignores promotions/drops, handles simple capture
       for (let i=0; i<idx; i++) {
-        const mv = moves[i];
+        const mv = activeMoves[i];
         if (!mv) break;
         const from = mv.from;
         const to = mv.to;
@@ -186,10 +433,12 @@ export default class ShogiKifViewer extends Plugin {
       renderBoard();
     }
 
+    const moveCount = () => activeMoves.length;
+
     btnFirst.onclick = ()=> applyUpTo(0);
     btnPrev.onclick  = ()=> applyUpTo(Math.max(0, moveIdx-1));
-    btnNext.onclick  = ()=> applyUpTo(Math.min(moves.length, moveIdx+1));
-    btnLast.onclick  = ()=> applyUpTo(moves.length);
+    btnNext.onclick  = ()=> applyUpTo(Math.min(moveCount(), moveIdx+1));
+    btnLast.onclick  = ()=> applyUpTo(moveCount());
 
     // initial render
     applyUpTo(0);
@@ -199,7 +448,7 @@ export default class ShogiKifViewer extends Plugin {
     const updateComments = () => {
       commentsDiv.empty();
       if (moveIdx>0) {
-        const mv = moves[moveIdx-1];
+        const mv = activeMoves[moveIdx-1];
         if (mv?.comment) {
           const pre = commentsDiv.createEl('pre');
           pre.textContent = mv.comment;
@@ -211,8 +460,29 @@ export default class ShogiKifViewer extends Plugin {
     const wrap = (fn: ()=>void) => () => { fn(); updateComments(); };
     btnFirst.onclick = wrap(()=>applyUpTo(0));
     btnPrev.onclick  = wrap(()=>applyUpTo(Math.max(0, moveIdx-1)));
-    btnNext.onclick  = wrap(()=>applyUpTo(Math.min(moves.length, moveIdx+1)));
-    btnLast.onclick  = wrap(()=>applyUpTo(moves.length));
+    btnNext.onclick  = wrap(()=>applyUpTo(Math.min(moveCount(), moveIdx+1)));
+    btnLast.onclick  = wrap(()=>applyUpTo(moveCount()));
+
+    const applyLineOption = (option: LineOption) => {
+      activeOption = option;
+      activeMoves = option.moves;
+      if (moveIdx > activeMoves.length) {
+        moveIdx = activeMoves.length;
+      }
+      applyUpTo(moveIdx);
+      updateComments();
+    };
+
+    if (variationSelect) {
+      variationSelect.onchange = () => {
+        const idx = Number(variationSelect!.value);
+        const option = lineOptions[idx];
+        if (option) {
+          applyLineOption(option);
+        }
+      };
+    }
+
     updateComments();
   }
 }

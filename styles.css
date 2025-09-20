@@ -8,6 +8,10 @@ display: flex;
 gap: 6px;
 margin-bottom: 8px;
 }
+.shogi-kif .toolbar .variation-select {
+  padding: 2px 6px;
+  max-width: 240px;
+}
 .shogi-kif .board {
 display: grid;
 grid-template-columns: repeat(9, 36px);
