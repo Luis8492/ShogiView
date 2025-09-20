@@ -16,14 +16,22 @@ gap: 2px;
 user-select: none;
 }
 .shogi-kif .cell {
-width: 36px; height: 36px;
-display: flex; align-items: center; justify-content: center;
-background: var(--background-secondary);
-border-radius: 4px;
-font-weight: 600;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  font-weight: 600;
+}
+.shogi-kif .cell .piece {
+  display: inline-block;
+  font-weight: inherit;
+}
+.shogi-kif .cell .piece-opponent {
+  transform: rotate(180deg);
+  opacity: 0.75;
 }
 .shogi-kif .cell.highlight-to {
-outline: 2px solid #6aa84f;
+  outline: 2px solid #6aa84f;
 }
 .shogi-kif .cell.highlight-from {
 outline: 2px dashed #cc0000;
