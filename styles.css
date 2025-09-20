@@ -16,6 +16,73 @@ gap: 6px;
 margin-bottom: 8px;
 font-size: 0.9em;
 }
+.shogi-kif .board-layout {
+display: flex;
+flex-wrap: wrap;
+gap: 16px;
+align-items: flex-start;
+}
+.shogi-kif .board-area {
+display: flex;
+flex-direction: column;
+align-items: center;
+gap: 6px;
+}
+.shogi-kif .move-list {
+flex: 1 1 220px;
+min-width: 220px;
+display: flex;
+flex-direction: column;
+gap: 6px;
+}
+.shogi-kif .move-list-title {
+font-weight: 600;
+}
+.shogi-kif .move-list-body {
+border: 1px solid var(--background-modifier-border);
+border-radius: 6px;
+max-height: 360px;
+overflow-y: auto;
+background: var(--background-primary);
+}
+.shogi-kif .move-list-empty {
+padding: 8px;
+color: var(--text-muted);
+}
+.shogi-kif .move-table {
+width: 100%;
+border-collapse: collapse;
+font-size: 0.95em;
+}
+.shogi-kif .move-table th,
+.shogi-kif .move-table td {
+padding: 4px 6px;
+border-bottom: 1px solid var(--background-modifier-border);
+}
+.shogi-kif .move-table th {
+width: 3em;
+text-align: right;
+font-weight: 600;
+color: var(--text-muted);
+}
+.shogi-kif .move-table td {
+font-variant-numeric: tabular-nums;
+}
+.shogi-kif .move-table tr:last-child th,
+.shogi-kif .move-table tr:last-child td {
+border-bottom: none;
+}
+.shogi-kif .move-table td.move-empty {
+color: var(--text-faint);
+}
+.shogi-kif .move-table td.move-done {
+color: var(--text-normal);
+}
+.shogi-kif .move-table td.move-current {
+background: var(--interactive-accent);
+color: var(--text-on-accent, var(--background-primary));
+border-radius: 4px;
+}
 .shogi-kif .variation-current {
 font-weight: 600;
 }
@@ -78,4 +145,11 @@ outline: 2px dashed #cc0000;
 }
 .shogi-kif .meta {
 margin-top: 6px; font-size: .9em; opacity: .9;
+}
+.shogi-kif .meta pre {
+margin: 0;
+white-space: pre-wrap;
+}
+.shogi-kif .board-area .meta {
+align-self: stretch;
 }

@@ -265,12 +265,18 @@ export default class ShogiKifViewer extends Plugin {
     variationSelect.addClass('variation-select');
     let availableVariations: VariationLine[] = [];
 
-    const handOpponent = container.createDiv({ cls: 'hands hands-opponent' });
-    const boardHost = container.createDiv({ cls: 'board' });
-    const handPlayer = container.createDiv({ cls: 'hands hands-player' });
+    const layout = container.createDiv({ cls: 'board-layout' });
+    const boardArea = layout.createDiv({ cls: 'board-area' });
+    const handOpponent = boardArea.createDiv({ cls: 'hands hands-opponent' });
+    const boardHost = boardArea.createDiv({ cls: 'board' });
+    const handPlayer = boardArea.createDiv({ cls: 'hands hands-player' });
     const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
-    const meta = container.createDiv({ cls: 'meta' });
-    const commentsDiv = container.createDiv({ cls: 'meta' });
+    const meta = boardArea.createDiv({ cls: 'meta' });
+    const commentsDiv = boardArea.createDiv({ cls: 'meta comments' });
+
+    const moveListContainer = layout.createDiv({ cls: 'move-list' });
+    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
+    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -360,6 +366,53 @@ export default class ShogiKifViewer extends Plugin {
       }
     }
 
+    function renderMoveList() {
+      moveListBody.empty();
+      const displaySequence = gatherMoves(currentLine, currentLine.moves.length);
+      if (!displaySequence.length) {
+        moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
+        return;
+      }
+      const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
+      const table = moveListBody.createEl('table', { cls: 'move-table' });
+      const tbody = table.createEl('tbody');
+      const grouped = new Map<number, { n: number; B?: ParsedMove; W?: ParsedMove }>();
+      for (const mv of displaySequence) {
+        const num = mv.n;
+        let entry = grouped.get(num);
+        if (!entry) {
+          entry = { n: num };
+          grouped.set(num, entry);
+        }
+        if (mv.n % 2 === 1) {
+          entry.B = mv;
+        } else {
+          entry.W = mv;
+        }
+      }
+      const ordered = Array.from(grouped.values()).sort((a, b) => a.n - b.n);
+      for (const entry of ordered) {
+        const row = tbody.createEl('tr');
+        row.createEl('th', { text: entry.n.toString() });
+        const senteCell = row.createEl('td');
+        const goteCell = row.createEl('td');
+        if (entry.B) {
+          senteCell.setText(formatMoveLabel(entry.B));
+          if (executedMoves.has(entry.B)) senteCell.addClass('move-done');
+          if (latestMove && latestMove === entry.B) senteCell.addClass('move-current');
+        } else {
+          senteCell.addClass('move-empty');
+        }
+        if (entry.W) {
+          goteCell.setText(formatMoveLabel(entry.W));
+          if (executedMoves.has(entry.W)) goteCell.addClass('move-done');
+          if (latestMove && latestMove === entry.W) goteCell.addClass('move-current');
+        } else {
+          goteCell.addClass('move-empty');
+        }
+      }
+    }
+
     function applyCurrent(idx: number) {
       const clamped = Math.max(0, Math.min(idx, currentLine.moves.length));
       currentMoveIdx = clamped;
@@ -407,6 +460,7 @@ export default class ShogiKifViewer extends Plugin {
       renderHands();
       updateMeta();
       updateComments();
+      renderMoveList();
     }
 
     function updateVariationUI() {
