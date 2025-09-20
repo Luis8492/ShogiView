@@ -62,7 +62,7 @@ function parseKif(text: string): { header: Record<string,string>, moves: Move[] 
   const header: Record<string,string> = {};
   const moves: Move[] = [];
   const lines = text.split(/\r?\n/);
-  const moveRe = /^\s*(\d+)\s+([１２３４５６７８９1-9一二三四五六七八九]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
+  const moveRe = /^\s*(\d+)\s+((?:同(?:\s|　)?)|[１２３４５６７８９1-9一二三四五六七八九]{2})([歩香桂銀金角飛玉王と成香成桂成銀馬龍])(?:\((\d{2})\))?(?:\(([^\)]*)\))?/;
   // captures: n, toSquare, piece, fromXY?, timestamp?
   let lastMove: Move|undefined;
 
@@ -82,7 +82,16 @@ function parseKif(text: string): { header: Record<string,string>, moves: Move[] 
     const m = line.match(moveRe);
     if (m) {
       const n = parseInt(m[1],10);
-      const to = parseSquare(m[2]);
+      const toToken = m[2].replace(/[\s　]/g, '');
+      let to: {f:number;r:number}|undefined;
+      if (toToken === '同') {
+        if (lastMove?.to) {
+          to = { ...lastMove.to };
+        }
+      } else {
+        to = parseSquare(toToken);
+      }
+      if (!to) continue;
       const kind = m[3] as PieceKind;
       let from: {f:number;r:number}|undefined;
       if (m[4]) {
