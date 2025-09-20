@@ -66,22 +66,41 @@ font-weight: 600;
 color: var(--text-muted);
 }
 .shogi-kif .move-table td {
-font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums;
+}
+.shogi-kif .move-table .move-prefix {
+  display: inline-block;
+  width: 1.4em;
+  margin-right: 6px;
+  font-weight: 600;
+  text-align: center;
+}
+.shogi-kif .move-table .move-text {
+  display: inline-block;
+}
+.shogi-kif .move-table .move-prefix-sente {
+  color: #d9480f;
+}
+.shogi-kif .move-table .move-prefix-gote {
+  color: #1d6fda;
 }
 .shogi-kif .move-table tr:last-child th,
 .shogi-kif .move-table tr:last-child td {
-border-bottom: none;
+  border-bottom: none;
 }
 .shogi-kif .move-table td.move-empty {
-color: var(--text-faint);
+  color: var(--text-faint);
 }
 .shogi-kif .move-table td.move-done {
-color: var(--text-normal);
+  color: var(--text-normal);
 }
 .shogi-kif .move-table td.move-current {
-background: var(--interactive-accent);
-color: var(--text-on-accent, var(--background-primary));
-border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent, var(--background-primary));
+  border-radius: 4px;
+}
+.shogi-kif .move-table td.move-current .move-prefix {
+  color: inherit;
 }
 .shogi-kif .variation-current {
 font-weight: 600;
