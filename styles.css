@@ -1,8 +1,33 @@
-/*
-
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
-
-If your plugin does not need CSS, delete this file.
-
-*/
+.shogi-kif {
+border: 1px solid var(--background-modifier-border);
+padding: 8px;
+border-radius: 8px;
+}
+.shogi-kif .toolbar {
+display: flex;
+gap: 6px;
+margin-bottom: 8px;
+}
+.shogi-kif .board {
+display: grid;
+grid-template-columns: repeat(9, 36px);
+grid-template-rows: repeat(9, 36px);
+gap: 2px;
+user-select: none;
+}
+.shogi-kif .cell {
+width: 36px; height: 36px;
+display: flex; align-items: center; justify-content: center;
+background: var(--background-secondary);
+border-radius: 4px;
+font-weight: 600;
+}
+.shogi-kif .cell.highlight-to {
+outline: 2px solid #6aa84f;
+}
+.shogi-kif .cell.highlight-from {
+outline: 2px dashed #cc0000;
+}
+.shogi-kif .meta {
+margin-top: 6px; font-size: .9em; opacity: .9;
+}
