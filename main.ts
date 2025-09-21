@@ -22,10 +22,12 @@ interface VariationLine {
   moves: ParsedMove[];
   parent?: { line: VariationLine; anchorMoveCount: number };
   leadVariations: VariationLine[];
+  isExpanded: boolean;
 }
 
 interface ParsedMove extends Move {
   variations: VariationLine[];
+  areVariationsExpanded: boolean;
 }
 
 const JP_NUM_FULL = '１２３４５６７８９';
@@ -147,7 +149,7 @@ type Hands = Record<Side, PieceKind[]>;
 // "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
 function parseKif(text: string): { header: Record<string,string>, root: VariationLine } {
   const header: Record<string,string> = {};
-  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [] };
+  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true };
   interface ParseContext { line: VariationLine; prevMove?: ParsedMove; }
   const rootContext: ParseContext = { line: root };
   const contextStack: ParseContext[] = [rootContext];
@@ -195,6 +197,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
         moves: [],
         parent: { line: anchorContext.line, anchorMoveCount },
         leadVariations: [],
+        isExpanded: false,
       };
       if (anchorMove) {
         anchorMove.variations.push(variationLine);
@@ -258,6 +261,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
         timestamp,
         rawTo: toToken || undefined,
         variations: [],
+        areVariationsExpanded: false,
       };
       ctx.line.moves.push(mv);
       ctx.prevMove = mv;
@@ -438,30 +442,143 @@ export default class ShogiKifViewer extends Plugin {
       }
     }
 
+    function hasAnyMoves(line: VariationLine): boolean {
+      if (line.moves.length > 0) {
+        return true;
+      }
+      for (const lead of line.leadVariations) {
+        if (hasAnyMoves(lead)) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     function renderMoveList() {
       moveListBody.empty();
-      const displaySequence = gatherMoves(currentLine, currentLine.moves.length);
-      if (!displaySequence.length) {
+      if (!hasAnyMoves(root)) {
         moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
         return;
       }
+
       const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
-      const table = moveListBody.createEl('table', { cls: 'move-table' });
-      const tbody = table.createEl('tbody');
-      for (const mv of displaySequence) {
-        const row = tbody.createEl('tr');
-        row.createEl('th', { text: mv.n.toString() });
-        const cell = row.createEl('td');
-        const prefix = mv.n % 2 === 1 ? '▲' : '△';
-        const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
-        cell.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-        const moveText = cell.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
-        if (mv.kind && isPromotedKind(mv.kind)) {
-          moveText.addClass('move-text-promoted');
-        }
-        if (executedMoves.has(mv)) cell.addClass('move-done');
-        if (latestMove && latestMove === mv) cell.addClass('move-current');
+      const activeLines = new Set<VariationLine>();
+      let pointer: VariationLine | undefined = currentLine;
+      while (pointer) {
+        activeLines.add(pointer);
+        pointer = pointer.parent?.line;
       }
+
+      const tree = moveListBody.createDiv({ cls: 'variation-tree' });
+
+      const renderVariationLine = (
+        line: VariationLine,
+        parentEl: HTMLElement,
+        indentLevel: number,
+      ) => {
+        const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
+        nodeEl.style.setProperty('--indent-level', indentLevel.toString());
+        if (activeLines.has(line)) {
+          nodeEl.addClass('is-active-line');
+        }
+        if (line === currentLine) {
+          nodeEl.addClass('is-current-line');
+        }
+
+        const hasChildren = line.leadVariations.length > 0 || line.moves.length > 0;
+        const headerEl = nodeEl.createDiv({ cls: 'variation-header' });
+        if (hasChildren) {
+          const toggleBtn = headerEl.createEl('button', {
+            cls: 'variation-toggle',
+            text: line.isExpanded ? '▼' : '▶',
+            attr: {
+              type: 'button',
+              'aria-expanded': String(line.isExpanded),
+              'aria-label': line.isExpanded ? '変化を折りたたむ' : '変化を展開する',
+            },
+          });
+          toggleBtn.onclick = (event) => {
+            event.stopPropagation();
+            line.isExpanded = !line.isExpanded;
+            renderMoveList();
+          };
+        } else {
+          headerEl.createSpan({ cls: ['variation-toggle', 'variation-toggle-placeholder'] });
+          nodeEl.addClass('is-leaf');
+        }
+        headerEl.createSpan({ cls: 'variation-title', text: lineLabel(line) });
+
+        if (!hasChildren) {
+          return;
+        }
+        if (!line.isExpanded) {
+          nodeEl.addClass('is-collapsed');
+          return;
+        }
+
+        const childrenEl = nodeEl.createDiv({ cls: 'variation-children' });
+
+        for (const lead of line.leadVariations) {
+          renderVariationLine(lead, childrenEl, indentLevel + 1);
+        }
+
+        for (const mv of line.moves) {
+          const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
+          const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
+          if (executedMoves.has(mv)) {
+            moveRow.addClass('is-done');
+          }
+          if (latestMove && latestMove === mv) {
+            moveRow.addClass('is-current');
+          }
+          moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
+          const prefix = mv.n % 2 === 1 ? '▲' : '△';
+          const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
+          moveRow.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
+          const moveText = moveRow.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
+          if (mv.kind && isPromotedKind(mv.kind)) {
+            moveText.addClass('move-text-promoted');
+          }
+
+          const hasVariations = mv.variations.length > 0;
+          const hasActiveChild = hasVariations && mv.variations.some((variation) => activeLines.has(variation));
+          if (hasVariations) {
+            moveRow.addClass('has-branch');
+            if (hasActiveChild) {
+              moveRow.addClass('has-active-branch');
+            }
+            const branchToggle = moveRow.createEl('button', {
+              cls: 'variation-branch-toggle',
+              text: mv.areVariationsExpanded ? '▼' : '▶',
+              attr: {
+                type: 'button',
+                'aria-expanded': String(mv.areVariationsExpanded),
+                'aria-label': mv.areVariationsExpanded
+                  ? 'この手の変化を折りたたむ'
+                  : 'この手の変化を展開する',
+              },
+            });
+            branchToggle.onclick = (event) => {
+              event.stopPropagation();
+              mv.areVariationsExpanded = !mv.areVariationsExpanded;
+              renderMoveList();
+            };
+            if (mv.areVariationsExpanded) {
+              const branchList = moveGroup.createDiv({ cls: 'variation-branch' });
+              if (hasActiveChild) {
+                branchList.addClass('is-active-branch');
+              }
+              for (const variation of mv.variations) {
+                renderVariationLine(variation, branchList, indentLevel + 1);
+              }
+            }
+          } else {
+            moveRow.createSpan({ cls: 'variation-branch-placeholder' });
+          }
+        }
+      };
+
+      renderVariationLine(root, tree, 0);
     }
 
     function applyCurrent(idx: number) {
@@ -514,18 +631,33 @@ export default class ShogiKifViewer extends Plugin {
       renderHands();
       updateMeta();
       updateComments();
-      renderMoveList();
     }
 
     function updateVariationUI() {
-      const pathParts: string[] = [];
       let node: VariationLine | undefined = currentLine;
+      while (node) {
+        node.isExpanded = true;
+        const parentInfo: VariationLine['parent'] = node.parent;
+        if (parentInfo) {
+          const anchorIndex = parentInfo.anchorMoveCount - 1;
+          if (anchorIndex >= 0) {
+            const anchorMove = parentInfo.line.moves[anchorIndex];
+            if (anchorMove) {
+              anchorMove.areVariationsExpanded = true;
+            }
+          }
+        }
+        node = parentInfo?.line;
+      }
+
+      const pathParts: string[] = [];
+      node = currentLine;
       while (node) {
         pathParts.push(lineLabel(node));
         node = node.parent?.line;
       }
       pathLabel.setText(`現在: ${pathParts.reverse().join(' → ')}`);
-      const parentInfo = currentLine.parent;
+      const parentInfo: VariationLine['parent'] = currentLine.parent;
       btnParent.disabled = !parentInfo;
       btnParent.toggleClass('is-hidden', !parentInfo);
       variationSelect.empty();
@@ -538,20 +670,22 @@ export default class ShogiKifViewer extends Plugin {
       if (!variations.length) {
         variationSelect.addClass('is-hidden');
         variationSelect.value = '';
-        return;
+      } else {
+        variationSelect.removeClass('is-hidden');
+        variationSelect.createEl('option', { text: '変化を選択', value: '' });
+        variations.forEach((variation, idx) => {
+          availableVariations.push(variation);
+          let label = lineLabel(variation);
+          const anchorCount = variation.parent?.anchorMoveCount ?? 0;
+          if (variation.parent?.line === currentLine && anchorCount > currentMoveIdx) {
+            label += '（未到達）';
+          }
+          variationSelect.createEl('option', { text: label, value: String(idx) });
+        });
+        variationSelect.value = '';
       }
-      variationSelect.removeClass('is-hidden');
-      variationSelect.createEl('option', { text: '変化を選択', value: '' });
-      variations.forEach((variation, idx) => {
-        availableVariations.push(variation);
-        let label = lineLabel(variation);
-        const anchorCount = variation.parent?.anchorMoveCount ?? 0;
-        if (variation.parent?.line === currentLine && anchorCount > currentMoveIdx) {
-          label += '（未到達）';
-        }
-        variationSelect.createEl('option', { text: label, value: String(idx) });
-      });
-      variationSelect.value = '';
+
+      renderMoveList();
     }
 
     function switchToVariation(variation: VariationLine) {
