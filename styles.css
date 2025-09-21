@@ -194,10 +194,14 @@ user-select: none;
   opacity: 0.75;
 }
 .shogi-kif .cell.highlight-to {
-  outline: 2px solid #6aa84f;
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(106, 168, 79, 0.5);
+  background-color: rgba(106, 168, 79, 0.12);
 }
 .shogi-kif .cell.highlight-from {
-outline: 2px dashed #cc0000;
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(204, 0, 0, 0.45);
+  background-color: rgba(204, 0, 0, 0.08);
 }
 .shogi-kif .meta {
 margin-top: 6px; font-size: .9em; opacity: .9;
