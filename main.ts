@@ -11,6 +11,8 @@ interface Move {
   from?: { f: number; r: number };// 元位置 例: (27)
   kind?: PieceKind;      // 記載の駒
   rawKind?: string;      // 表示用の駒表記（例: 歩成）
+  promoted?: boolean;    // 成った指し手か
+  promotionDeclined?: boolean; // 不成の指し手か
   drop?: boolean;        // 持ち駒からの打ち
   comment?: string;      // * コメント
   timestamp?: string;    // ( 0:12/00:00:12) など
@@ -70,6 +72,18 @@ function cloneBoard(B:(Piece|null)[][]){
   return B.map(row=>row.map(c=>c?{...c}:null));
 }
 
+function promoteKind(kind: PieceKind): PieceKind {
+  switch (kind) {
+    case '歩': return 'と';
+    case '香': return '成香';
+    case '桂': return '成桂';
+    case '銀': return '成銀';
+    case '角': return '馬';
+    case '飛': return '龍';
+    default: return kind;
+  }
+}
+
 function demoteKind(kind: PieceKind): PieceKind {
   switch (kind) {
     case 'と': return '歩';
@@ -85,52 +99,73 @@ function demoteKind(kind: PieceKind): PieceKind {
 interface PieceTokenInfo {
   kind: PieceKind;
   raw: string;
+  promoted?: boolean;
+  promotionDeclined?: boolean;
 }
 
+const PIECE_DIRECTIONS_RE = /(右|左|直|上|引|寄)/g;
+
 function parsePieceToken(token: string): PieceTokenInfo | null {
-  switch (token) {
+  const raw = token;
+  if (!token) return null;
+
+  let working = token;
+  let promoted = false;
+  let promotionDeclined = false;
+
+  if (working.endsWith('不成')) {
+    promotionDeclined = true;
+    working = working.slice(0, -2);
+  } else if (working.endsWith('成')) {
+    promoted = true;
+    working = working.slice(0, -1);
+  }
+
+  working = working.replace(PIECE_DIRECTIONS_RE, '');
+
+  let baseKind: PieceKind | undefined;
+  switch (working) {
     case '歩':
-      return { kind: '歩', raw: token };
-    case '歩成':
-      return { kind: 'と', raw: token };
-    case 'と':
-      return { kind: 'と', raw: token };
     case '香':
-      return { kind: '香', raw: token };
-    case '香成':
-    case '成香':
-      return { kind: '成香', raw: token };
     case '桂':
-      return { kind: '桂', raw: token };
-    case '桂成':
-    case '成桂':
-      return { kind: '成桂', raw: token };
     case '銀':
-      return { kind: '銀', raw: token };
-    case '銀成':
-    case '成銀':
-      return { kind: '成銀', raw: token };
     case '金':
-      return { kind: '金', raw: token };
     case '角':
-      return { kind: '角', raw: token };
-    case '角成':
-      return { kind: '馬', raw: token };
-    case '馬':
-      return { kind: '馬', raw: token };
     case '飛':
-      return { kind: '飛', raw: token };
-    case '飛成':
-      return { kind: '龍', raw: token };
-    case '龍':
-      return { kind: '龍', raw: token };
     case '玉':
-      return { kind: '玉', raw: token };
     case '王':
-      return { kind: '王', raw: token };
+    case 'と':
+    case '成香':
+    case '成桂':
+    case '成銀':
+    case '馬':
+    case '龍':
+      baseKind = working as PieceKind;
+      break;
     default:
       return null;
   }
+
+  let resultingKind = baseKind;
+  if (promoted && !promotionDeclined) {
+    const promotedKind = promoteKind(baseKind);
+    if (promotedKind !== baseKind) {
+      resultingKind = promotedKind;
+    } else {
+      promoted = false;
+    }
+  }
+
+  if (promotionDeclined) {
+    promoted = false;
+  }
+
+  return {
+    kind: resultingKind,
+    raw,
+    promoted: promoted ? true : undefined,
+    promotionDeclined: promotionDeclined ? true : undefined,
+  };
 }
 
 const HAND_PIECE_ORDER: PieceKind[] = ['飛','角','金','銀','桂','香','歩','玉','王'];
@@ -153,7 +188,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
   const contextStack: ParseContext[] = [rootContext];
 
   const lines = text.split(/\r?\n/);
-  const piecePattern = '(歩成|香成|桂成|銀成|角成|飛成|成香|成桂|成銀|馬|龍|と|歩|香|桂|銀|金|角|飛|玉|王)';
+  const piecePattern = '((?:成香|成桂|成銀|馬|龍|と|歩|香|桂|銀|金|角|飛|玉|王)(?:右|左|直|上|引|寄)*(?:成|不成)?)';
   const moveRe = new RegExp(`^\\s*(\\d+)\\s+((?:同(?:\\s|　)?)|[${JP_NUM_FULL}1-9${JP_NUM_KANJI}]{2})${piecePattern}(打?)(?:\\((\\d{2})\\))?(?:\\(([^\\)]*)\\))?`);
   const variationRe = /^変化：(\d+)手/;
 
@@ -239,7 +274,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
       if (!to) continue;
       const pieceToken = parsePieceToken(m[3]);
       if (!pieceToken) continue;
-      const { kind, raw } = pieceToken;
+      const { kind, raw, promoted, promotionDeclined } = pieceToken;
       const drop = m[4] === '打';
       let from: { f: number; r: number } | undefined;
       if (m[5]) {
@@ -254,6 +289,8 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
         from,
         kind,
         rawKind: raw,
+        promoted,
+        promotionDeclined,
         drop,
         timestamp,
         rawTo: toToken || undefined,
@@ -292,6 +329,8 @@ function formatMoveLabel(mv: Move): string {
   const fromText = !mv.drop && mv.from ? `(${mv.from.f}${mv.from.r})` : '';
   return `${squareText}${kindText}${dropText}${fromText}`;
 }
+
+export { parseKif, initialBoard, demoteKind, promoteKind };
 
 export default class ShogiKifViewer extends Plugin {
   async onload() {
@@ -502,6 +541,12 @@ export default class ShogiKifViewer extends Plugin {
           hands[side].push(capturedKind);
         }
         if (moving) {
+          if (!mv.drop && mv.promoted) {
+            moving.kind = promoteKind(moving.kind);
+          }
+          if (!mv.drop && mv.promotionDeclined && !mv.kind) {
+            moving.kind = demoteKind(moving.kind);
+          }
           if (mv.kind) {
             moving.kind = mv.kind;
           }
