@@ -13,7 +13,7 @@ Obsidian の Markdown ノートに KIF 形式の棋譜を貼り付けると、�
 
 ## 使い方
 
-1. プラグインをビルドし、生成された `main.js`, `manifest.json`, `styles.css` (任意) を Obsidian Vault の `/.obsidian/plugins/shogiview/` など任意のフォルダに配置します。
+1. プラグインをビルドし、生成された `main.js`, `manifest.json`, `styles.css` (任意) を Obsidian Vault の `/.obsidian/plugins/shogi-kif-viewer/` フォルダに配置します。フォルダ名は `manifest.json` の `id` (`shogi-kif-viewer`) と一致させないとプラグインが読み込まれません。
 2. Obsidian を再起動し、**設定 → Community plugins** からプラグインを有効化します。
 3. ノートに以下のようなコードブロックを追加します。
 
