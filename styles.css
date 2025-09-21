@@ -134,26 +134,27 @@ opacity: 0.5;
 display: none !important;
 }
 .shogi-kif .hands {
-display: flex;
-flex-direction: column;
-gap: 4px;
-margin: 0;
-font-size: 0.9em;
-justify-content: center;
+ display: flex;
+ flex-direction: column;
+ gap: 4px;
+ margin: 0;
+ font-size: 0.9em;
 }
 .shogi-kif .hands-opponent {
-grid-area: gote;
-justify-self: end;
-align-self: stretch;
-align-items: flex-end;
-text-align: right;
+ grid-area: gote;
+ justify-self: end;
+ align-self: stretch;
+ align-items: flex-end;
+ text-align: right;
+ justify-content: flex-start;
 }
 .shogi-kif .hands-player {
-grid-area: sente;
-justify-self: start;
-align-self: stretch;
-align-items: flex-start;
-text-align: left;
+ grid-area: sente;
+ justify-self: start;
+ align-self: stretch;
+ align-items: flex-start;
+ text-align: left;
+ justify-content: flex-end;
 }
 .shogi-kif .hand-piece-opponent {
 transform: rotate(180deg);
