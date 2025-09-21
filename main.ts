@@ -481,6 +481,14 @@ export default class ShogiKifViewer extends Plugin {
       }
     }
 
+    function jumpTo(line: VariationLine, moveIndex: number) {
+      lineState.set(currentLine, currentMoveIdx);
+      currentLine = line;
+      const targetCount = Math.max(0, Math.min(moveIndex + 1, currentLine.moves.length));
+      applyCurrent(targetCount);
+      updateVariationUI();
+    }
+
     function hasAnyMoves(line: VariationLine): boolean {
       if (line.moves.length > 0) {
         return true;
@@ -561,7 +569,7 @@ export default class ShogiKifViewer extends Plugin {
           renderVariationLine(lead, childrenEl, indentLevel + 1);
         }
 
-        for (const mv of line.moves) {
+        line.moves.forEach((mv, moveIndex) => {
           const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
           const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
           if (executedMoves.has(mv)) {
@@ -570,6 +578,9 @@ export default class ShogiKifViewer extends Plugin {
           if (latestMove && latestMove === mv) {
             moveRow.addClass('is-current');
           }
+          moveRow.onclick = () => {
+            jumpTo(line, moveIndex);
+          };
           moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
           const prefix = mv.n % 2 === 1 ? '▲' : '△';
           const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
@@ -614,7 +625,7 @@ export default class ShogiKifViewer extends Plugin {
           } else {
             moveRow.createSpan({ cls: 'variation-branch-placeholder' });
           }
-        }
+        });
       };
 
       renderVariationLine(root, tree, 0);

@@ -160,6 +160,7 @@ padding: 4px;
 border-radius: 4px;
 font-variant-numeric: tabular-nums;
 color: var(--text-muted);
+cursor: pointer;
 }
 .shogi-kif .variation-move.has-branch .variation-branch-toggle {
 visibility: visible;
