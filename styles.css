@@ -32,12 +32,12 @@ gap: 6px;
 
 .shogi-kif .board-wrapper {
 display: grid;
-grid-template-areas:
-  'gote'
-  'board'
-  'sente';
-justify-items: stretch;
-gap: 6px;
+grid-template-columns: auto auto auto;
+grid-template-areas: 'gote board sente';
+justify-items: center;
+align-items: center;
+column-gap: 12px;
+row-gap: 6px;
 }
 
 .shogi-kif .board-wrapper .board {
@@ -139,19 +139,21 @@ flex-direction: column;
 gap: 4px;
 margin: 0;
 font-size: 0.9em;
+justify-content: center;
 }
 .shogi-kif .hands-opponent {
 grid-area: gote;
-justify-self: start;
-align-items: flex-start;
-align-self: start;
+justify-self: end;
+align-self: stretch;
+align-items: flex-end;
+text-align: right;
 }
 .shogi-kif .hands-player {
 grid-area: sente;
-justify-self: end;
-align-items: flex-end;
-align-self: end;
-text-align: right;
+justify-self: start;
+align-self: stretch;
+align-items: flex-start;
+text-align: left;
 }
 .shogi-kif .hand-piece-opponent {
 transform: rotate(180deg);
