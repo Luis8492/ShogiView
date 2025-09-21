@@ -2,6 +2,7 @@
 border: 1px solid var(--background-modifier-border);
 padding: 8px;
 border-radius: 8px;
+--shogi-promoted-color: #c92a2a;
 }
 .shogi-kif .toolbar {
 display: flex;
@@ -93,6 +94,9 @@ color: var(--text-muted);
 .shogi-kif .move-table .move-text {
   display: inline-block;
 }
+.shogi-kif .move-table .move-text-promoted {
+  color: var(--shogi-promoted-color);
+}
 .shogi-kif .move-table .move-prefix-sente {
   color: #d9480f;
 }
@@ -179,6 +183,9 @@ user-select: none;
 .shogi-kif .cell .piece {
   display: inline-block;
   font-weight: inherit;
+}
+.shogi-kif .piece-promoted {
+  color: var(--shogi-promoted-color);
 }
 .shogi-kif .cell .piece-opponent {
   transform: rotate(180deg);
