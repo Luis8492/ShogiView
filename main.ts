@@ -343,6 +343,8 @@ export default class ShogiKifViewer extends Plugin {
 
   renderKif(src: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) {
     const container = el.createDiv({ cls: 'shogi-kif' });
+    const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
+    const requestedInitialMove = startMoveMatch ? parseInt(startMoveMatch[1], 10) : undefined;
     const { header, root } = parseKif(src);
 
     let board = initialBoard();
@@ -360,6 +362,25 @@ export default class ShogiKifViewer extends Plugin {
     const btnPrev = toolbar.createEl('button', { text: '◀ 一手戻る' });
     const btnNext = toolbar.createEl('button', { text: '一手進む ▶' });
     const btnLast = toolbar.createEl('button', { text: '最後 ⏭' });
+
+    const startMoveControls = toolbar.createDiv({ cls: 'start-move-control' });
+    startMoveControls.createSpan({ cls: 'start-move-label', text: '表示開始手:' });
+    const startMoveInput = startMoveControls.createEl('input', {
+      cls: 'start-move-input',
+      attr: {
+        type: 'number',
+        min: '0',
+        step: '1',
+        placeholder: '手数',
+        inputmode: 'numeric',
+      },
+    });
+    const startMoveApply = startMoveControls.createEl('button', {
+      cls: 'start-move-apply',
+      text: '移動',
+      attr: { type: 'button' },
+    });
+    const startMoveFeedback = startMoveControls.createSpan({ cls: 'start-move-feedback' });
 
     const variationBar = container.createDiv({ cls: 'variation-bar' });
     const pathLabel = variationBar.createSpan({ cls: 'variation-current' });
@@ -487,6 +508,54 @@ export default class ShogiKifViewer extends Plugin {
       const targetCount = Math.max(0, Math.min(moveIndex + 1, currentLine.moves.length));
       applyCurrent(targetCount);
       updateVariationUI();
+    }
+
+    function findMoveByNumber(
+      line: VariationLine,
+      moveNumber: number,
+    ): { line: VariationLine; moveIndex: number } | null {
+      const idx = line.moves.findIndex((mv) => mv.n === moveNumber);
+      if (idx >= 0) {
+        return { line, moveIndex: idx };
+      }
+      for (const mv of line.moves) {
+        for (const variation of mv.variations) {
+          const found = findMoveByNumber(variation, moveNumber);
+          if (found) {
+            return found;
+          }
+        }
+      }
+      for (const variation of line.leadVariations) {
+        const found = findMoveByNumber(variation, moveNumber);
+        if (found) {
+          return found;
+        }
+      }
+      return null;
+    }
+
+    function goToMoveNumber(moveNumber: number): boolean {
+      if (!Number.isFinite(moveNumber) || moveNumber < 0) {
+        return false;
+      }
+      if (moveNumber === 0) {
+        applyCurrent(0);
+        updateVariationUI();
+        return true;
+      }
+      const found = findMoveByNumber(root, moveNumber);
+      if (!found) {
+        return false;
+      }
+      if (found.line === currentLine) {
+        const target = Math.max(0, Math.min(found.moveIndex + 1, currentLine.moves.length));
+        applyCurrent(target);
+        updateVariationUI();
+      } else {
+        jumpTo(found.line, found.moveIndex);
+      }
+      return true;
     }
 
     function hasAnyMoves(line: VariationLine): boolean {
@@ -800,7 +869,50 @@ export default class ShogiKifViewer extends Plugin {
       }
     };
 
+    function handleStartMoveApply() {
+      const raw = startMoveInput.value.trim();
+      if (!raw) {
+        startMoveControls.removeClass('has-error');
+        startMoveFeedback.setText('');
+        return;
+      }
+      const moveNumber = parseInt(raw, 10);
+      if (Number.isNaN(moveNumber)) {
+        startMoveControls.addClass('has-error');
+        startMoveFeedback.setText('手数は数字で入力してください。');
+        return;
+      }
+      const success = goToMoveNumber(moveNumber);
+      if (!success) {
+        startMoveControls.addClass('has-error');
+        startMoveFeedback.setText('指定した手が見つかりません。');
+      } else {
+        startMoveControls.removeClass('has-error');
+        startMoveFeedback.setText('');
+        startMoveInput.value = moveNumber.toString();
+      }
+    }
+
+    startMoveApply.onclick = (event) => {
+      event.preventDefault();
+      handleStartMoveApply();
+    };
+    startMoveInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        handleStartMoveApply();
+      }
+    });
+
     applyCurrent(0);
     updateVariationUI();
+    if (requestedInitialMove !== undefined && !Number.isNaN(requestedInitialMove)) {
+      startMoveInput.value = requestedInitialMove.toString();
+      const success = goToMoveNumber(requestedInitialMove);
+      if (!success) {
+        startMoveControls.addClass('has-error');
+        startMoveFeedback.setText('指定した手が見つかりません。');
+      }
+    }
   }
 }
