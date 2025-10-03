@@ -6,8 +6,33 @@ border-radius: 8px;
 }
 .shogi-kif .toolbar {
 display: flex;
+flex-wrap: wrap;
+align-items: center;
 gap: 6px;
 margin-bottom: 8px;
+}
+.shogi-kif .start-move-control {
+display: inline-flex;
+flex-wrap: wrap;
+align-items: center;
+gap: 4px;
+margin-left: auto;
+font-size: 0.9em;
+}
+.shogi-kif .start-move-input {
+width: 5.5em;
+padding: 2px 4px;
+}
+.shogi-kif .start-move-feedback {
+flex-basis: 100%;
+font-size: 0.8em;
+color: var(--text-muted);
+}
+.shogi-kif .start-move-control.has-error .start-move-input {
+border-color: var(--color-red);
+}
+.shogi-kif .start-move-control.has-error .start-move-feedback {
+color: var(--color-red);
 }
 .shogi-kif .variation-bar {
 display: flex;
