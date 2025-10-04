@@ -71,31 +71,9 @@ display: none;
 }
 
 .shogi-kif .board-layout.is-stacked .board-move-splitter {
-display: flex;
-align-items: center;
-justify-content: center;
-height: 10px;
-cursor: row-resize;
-background: var(--background-modifier-border);
-border-radius: 4px;
-position: relative;
-}
-
-.shogi-kif .board-layout.is-stacked .board-move-splitter:focus-visible {
-outline: 2px solid var(--interactive-accent);
-outline-offset: 2px;
-}
-
-.shogi-kif .board-layout.is-stacked .board-move-splitter::after {
-content: '';
-width: 36px;
-height: 2px;
-background: var(--text-muted);
-border-radius: 1px;
-}
-
-.shogi-kif .board-layout.is-stacked .board-move-splitter.is-dragging {
-background: var(--interactive-accent);
+  display: block;
+  height: 16px;
+  pointer-events: none;
 }
 .shogi-kif .board-area {
 display: flex;
