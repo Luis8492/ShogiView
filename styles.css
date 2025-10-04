@@ -389,3 +389,12 @@ white-space: pre-wrap;
 .shogi-kif .board-area .meta {
 align-self: stretch;
 }
+
+.shogi-kif .comments-container {
+  margin-top: 8px;
+}
+
+.shogi-kif .comments-container .meta {
+  align-self: stretch;
+  width: 100%;
+}

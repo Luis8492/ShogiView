@@ -488,7 +488,6 @@ export default class ShogiKifViewer extends Plugin {
     const handPlayer = boardWrapper.createDiv({ cls: 'hands hands-player' });
     const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
     const meta = boardArea.createDiv({ cls: 'meta' });
-    const commentsDiv = boardArea.createDiv({ cls: 'meta comments' });
 
     const splitter = layout.createDiv({ cls: 'board-move-splitter' });
     splitter.setAttr('role', 'separator');
@@ -500,6 +499,9 @@ export default class ShogiKifViewer extends Plugin {
     const moveListContainer = layout.createDiv({ cls: 'move-list' });
     moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
     const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+
+    const commentsContainer = container.createDiv({ cls: 'comments-container' });
+    const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
     const MIN_MOVE_LIST_HEIGHT = 160;
     let isStackedLayout = false;
