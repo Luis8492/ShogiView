@@ -524,16 +524,28 @@ export default class ShogiKifViewer extends Plugin {
       splitter.setAttr('aria-valuenow', `${clamped}`);
     }
 
-    function applyStoredMoveListHeight() {
-      if (!isStackedLayout) {
-        clearMoveListSizing();
-        return;
-      }
-      splitter.setAttr('aria-valuemin', `${MIN_MOVE_LIST_HEIGHT}`);
-      if (storedMoveListHeight !== null) {
-        setMoveListHeight(storedMoveListHeight);
+    function syncMoveListHeightToBoard() {
+      const boardHeight = Math.round(boardArea.getBoundingClientRect().height);
+      moveListContainer.style.removeProperty('flex');
+      if (boardHeight > 0) {
+        moveListContainer.style.height = `${boardHeight}px`;
       } else {
-        clearMoveListSizing();
+        moveListContainer.style.removeProperty('height');
+      }
+    }
+
+    function applyMoveListSizing() {
+      if (isStackedLayout) {
+        splitter.setAttr('aria-valuemin', `${MIN_MOVE_LIST_HEIGHT}`);
+        if (storedMoveListHeight !== null) {
+          setMoveListHeight(storedMoveListHeight);
+        } else {
+          clearMoveListSizing();
+        }
+      } else {
+        splitter.removeAttribute('aria-valuemin');
+        splitter.removeAttribute('aria-valuenow');
+        syncMoveListHeightToBoard();
       }
     }
 
@@ -569,7 +581,7 @@ export default class ShogiKifViewer extends Plugin {
         splitter.removeClass('is-dragging');
       }
 
-      applyStoredMoveListHeight();
+      applyMoveListSizing();
     }
 
     function requestStackedStateUpdate() {
@@ -611,6 +623,7 @@ export default class ShogiKifViewer extends Plugin {
       if (!isStackedLayout) {
         storedMoveListHeight = null;
         clearMoveListSizing();
+        syncMoveListHeightToBoard();
       }
     };
 
@@ -631,6 +644,13 @@ export default class ShogiKifViewer extends Plugin {
     });
     layoutResizeObserver.observe(layout);
     this.register(() => layoutResizeObserver.disconnect());
+    const boardAreaResizeObserver = new ResizeObserver(() => {
+      if (!isStackedLayout) {
+        syncMoveListHeightToBoard();
+      }
+    });
+    boardAreaResizeObserver.observe(boardArea);
+    this.register(() => boardAreaResizeObserver.disconnect());
     this.registerDomEvent(window, 'resize', () => {
       requestStackedStateUpdate();
     });
