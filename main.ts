@@ -343,7 +343,7 @@ export default class ShogiKifViewer extends Plugin {
 
   renderKif(src: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) {
     const container = el.createDiv({ cls: 'shogi-kif' });
-    const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
+    const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?|初期表示手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
     const requestedInitialMove = startMoveMatch ? parseInt(startMoveMatch[1], 10) : undefined;
     const { header, root } = parseKif(src);
 
