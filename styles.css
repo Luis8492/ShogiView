@@ -3,6 +3,10 @@ border: 1px solid var(--background-modifier-border);
 padding: 8px;
 border-radius: 8px;
 --shogi-promoted-color: #c92a2a;
+display: flex;
+flex-direction: column;
+height: 100%;
+min-height: 0;
 }
 .shogi-kif .toolbar {
 display: flex;
@@ -46,7 +50,52 @@ font-size: 0.9em;
 display: flex;
 flex-wrap: wrap;
 gap: 16px;
-align-items: flex-start;
+align-items: stretch;
+flex: 1 1 auto;
+min-height: 0;
+position: relative;
+}
+
+.shogi-kif .board-layout.is-stacked {
+flex-direction: column;
+flex-wrap: nowrap;
+}
+
+.shogi-kif .board-layout.is-stacked .board-area,
+.shogi-kif .board-layout.is-stacked .move-list {
+width: 100%;
+}
+
+.shogi-kif .board-layout .board-move-splitter {
+display: none;
+}
+
+.shogi-kif .board-layout.is-stacked .board-move-splitter {
+display: flex;
+align-items: center;
+justify-content: center;
+height: 10px;
+cursor: row-resize;
+background: var(--background-modifier-border);
+border-radius: 4px;
+position: relative;
+}
+
+.shogi-kif .board-layout.is-stacked .board-move-splitter:focus-visible {
+outline: 2px solid var(--interactive-accent);
+outline-offset: 2px;
+}
+
+.shogi-kif .board-layout.is-stacked .board-move-splitter::after {
+content: '';
+width: 36px;
+height: 2px;
+background: var(--text-muted);
+border-radius: 1px;
+}
+
+.shogi-kif .board-layout.is-stacked .board-move-splitter.is-dragging {
+background: var(--interactive-accent);
 }
 .shogi-kif .board-area {
 display: flex;
@@ -75,6 +124,7 @@ min-width: 220px;
 display: flex;
 flex-direction: column;
 gap: 6px;
+min-height: 0;
 }
 .shogi-kif .move-list-title {
 font-weight: 600;
@@ -82,10 +132,12 @@ font-weight: 600;
 .shogi-kif .move-list-body {
 border: 1px solid var(--background-modifier-border);
 border-radius: 6px;
-max-height: 360px;
+flex: 1 1 auto;
+min-height: 0;
 overflow-y: auto;
 background: var(--background-primary);
 padding: 6px;
+height: 100%;
 }
 .shogi-kif .move-list-empty {
 padding: 8px;

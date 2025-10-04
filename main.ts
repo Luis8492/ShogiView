@@ -490,9 +490,150 @@ export default class ShogiKifViewer extends Plugin {
     const meta = boardArea.createDiv({ cls: 'meta' });
     const commentsDiv = boardArea.createDiv({ cls: 'meta comments' });
 
+    const splitter = layout.createDiv({ cls: 'board-move-splitter' });
+    splitter.setAttr('role', 'separator');
+    splitter.setAttr('aria-hidden', 'true');
+    splitter.setAttr('aria-orientation', 'horizontal');
+    splitter.setAttr('aria-label', '盤と棋譜リストの境界をドラッグして高さを調整');
+    splitter.tabIndex = -1;
+
     const moveListContainer = layout.createDiv({ cls: 'move-list' });
     moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
     const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+
+    const MIN_MOVE_LIST_HEIGHT = 160;
+    let isStackedLayout = false;
+    let storedMoveListHeight: number | null = null;
+    let stackedUpdateQueued = false;
+    let activePointerId: number | null = null;
+    let dragStartY = 0;
+    let dragStartHeight = 0;
+
+    function clearMoveListSizing() {
+      moveListContainer.style.removeProperty('height');
+      moveListContainer.style.removeProperty('flex');
+      splitter.removeAttribute('aria-valuenow');
+    }
+
+    function setMoveListHeight(height: number) {
+      const clamped = Math.max(MIN_MOVE_LIST_HEIGHT, Math.round(height));
+      moveListContainer.style.height = `${clamped}px`;
+      moveListContainer.style.flex = '0 0 auto';
+      splitter.setAttr('aria-valuenow', `${clamped}`);
+    }
+
+    function applyStoredMoveListHeight() {
+      if (!isStackedLayout) {
+        clearMoveListSizing();
+        return;
+      }
+      splitter.setAttr('aria-valuemin', `${MIN_MOVE_LIST_HEIGHT}`);
+      if (storedMoveListHeight !== null) {
+        setMoveListHeight(storedMoveListHeight);
+      } else {
+        clearMoveListSizing();
+      }
+    }
+
+    function performStackedStateUpdate() {
+      const layoutWidth = layout.clientWidth;
+      const boardWidth = boardWrapper.getBoundingClientRect().width;
+      const moveListStyle = window.getComputedStyle(moveListContainer);
+      const minListWidth = parseFloat(moveListStyle.minWidth || '0');
+      const layoutStyle = window.getComputedStyle(layout);
+      const gap = parseFloat(layoutStyle.columnGap || layoutStyle.gap || '0');
+      const shouldStack = layoutWidth > 0 && boardWidth > 0
+        ? layoutWidth < boardWidth + minListWidth + gap
+        : layoutWidth < minListWidth + gap;
+
+      if (shouldStack !== isStackedLayout) {
+        isStackedLayout = shouldStack;
+        layout.toggleClass('is-stacked', isStackedLayout);
+        splitter.setAttr('aria-hidden', isStackedLayout ? 'false' : 'true');
+        splitter.setAttr('aria-orientation', isStackedLayout ? 'horizontal' : 'vertical');
+        splitter.tabIndex = isStackedLayout ? 0 : -1;
+        if (!isStackedLayout) {
+          splitter.removeClass('is-dragging');
+          storedMoveListHeight = null;
+          splitter.removeAttribute('aria-valuemin');
+        }
+      }
+
+      if (!isStackedLayout && activePointerId !== null) {
+        if (splitter.hasPointerCapture(activePointerId)) {
+          splitter.releasePointerCapture(activePointerId);
+        }
+        activePointerId = null;
+        splitter.removeClass('is-dragging');
+      }
+
+      applyStoredMoveListHeight();
+    }
+
+    function requestStackedStateUpdate() {
+      if (stackedUpdateQueued) return;
+      stackedUpdateQueued = true;
+      window.requestAnimationFrame(() => {
+        stackedUpdateQueued = false;
+        performStackedStateUpdate();
+      });
+    }
+
+    const beginSplitterDrag = (event: PointerEvent) => {
+      if (!isStackedLayout || event.button !== 0) return;
+      event.preventDefault();
+      const pointerId = event.pointerId;
+      activePointerId = pointerId;
+      dragStartY = event.clientY;
+      dragStartHeight = storedMoveListHeight ?? moveListContainer.getBoundingClientRect().height;
+      splitter.addClass('is-dragging');
+      splitter.setPointerCapture(pointerId);
+    };
+
+    const updateSplitterDrag = (event: PointerEvent) => {
+      if (!isStackedLayout || activePointerId !== event.pointerId) return;
+      event.preventDefault();
+      const delta = event.clientY - dragStartY;
+      const nextHeight = dragStartHeight - delta;
+      storedMoveListHeight = Math.max(MIN_MOVE_LIST_HEIGHT, nextHeight);
+      setMoveListHeight(storedMoveListHeight);
+    };
+
+    const endSplitterDrag = (event: PointerEvent) => {
+      if (activePointerId !== event.pointerId) return;
+      if (splitter.hasPointerCapture(event.pointerId)) {
+        splitter.releasePointerCapture(event.pointerId);
+      }
+      splitter.removeClass('is-dragging');
+      activePointerId = null;
+      if (!isStackedLayout) {
+        storedMoveListHeight = null;
+        clearMoveListSizing();
+      }
+    };
+
+    this.registerDomEvent(splitter, 'pointerdown', beginSplitterDrag);
+    this.registerDomEvent(splitter, 'pointermove', updateSplitterDrag);
+    this.registerDomEvent(splitter, 'pointerup', endSplitterDrag);
+    this.registerDomEvent(splitter, 'pointercancel', endSplitterDrag);
+    this.registerDomEvent(splitter, 'dblclick', (event) => {
+      if (!isStackedLayout) return;
+      event.preventDefault();
+      storedMoveListHeight = null;
+      clearMoveListSizing();
+      requestStackedStateUpdate();
+    });
+
+    const layoutResizeObserver = new ResizeObserver(() => {
+      requestStackedStateUpdate();
+    });
+    layoutResizeObserver.observe(layout);
+    this.register(() => layoutResizeObserver.disconnect());
+    this.registerDomEvent(window, 'resize', () => {
+      requestStackedStateUpdate();
+    });
+
+    requestStackedStateUpdate();
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -666,6 +807,7 @@ export default class ShogiKifViewer extends Plugin {
       moveListBody.empty();
       if (!hasAnyMoves(root)) {
         moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
+        requestStackedStateUpdate();
         return;
       }
 
@@ -790,6 +932,7 @@ export default class ShogiKifViewer extends Plugin {
       };
 
       renderVariationLine(root, tree, 0);
+      requestStackedStateUpdate();
     }
 
     function applyCurrent(idx: number) {
