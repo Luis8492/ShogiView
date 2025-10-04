@@ -3,6 +3,8 @@ border: 1px solid var(--background-modifier-border);
 padding: 8px;
 border-radius: 8px;
 --shogi-promoted-color: #c92a2a;
+--shogi-cell-size: 36px;
+--shogi-cell-gap: 2px;
 display: flex;
 flex-direction: column;
 height: 100%;
@@ -92,9 +94,81 @@ column-gap: 12px;
 row-gap: 6px;
 }
 
-.shogi-kif .board-wrapper .board {
-grid-area: board;
-justify-self: center;
+.shogi-kif .board-with-coordinates {
+ display: grid;
+ justify-items: center;
+ row-gap: 6px;
+}
+
+.shogi-kif .board-with-coordinates .board-middle {
+ display: grid;
+ grid-template-columns: auto max-content auto;
+ column-gap: 6px;
+ align-items: center;
+}
+
+.shogi-kif .board-files {
+ display: grid;
+ grid-template-columns: repeat(9, var(--shogi-cell-size));
+ gap: var(--shogi-cell-gap);
+ font-size: 0.85em;
+ font-weight: 600;
+ color: var(--text-muted);
+ justify-items: center;
+ align-items: center;
+}
+
+.shogi-kif .board-ranks {
+ display: grid;
+ grid-template-rows: repeat(9, var(--shogi-cell-size));
+ gap: var(--shogi-cell-gap);
+ font-size: 0.85em;
+ font-weight: 600;
+ color: var(--text-muted);
+ justify-items: center;
+ align-items: center;
+ min-width: var(--shogi-cell-size);
+}
+
+.shogi-kif .board-files .board-coordinate,
+.shogi-kif .board-ranks .board-coordinate {
+ display: flex;
+ align-items: center;
+ justify-content: center;
+}
+
+.shogi-kif .board-files .board-coordinate {
+ width: var(--shogi-cell-size);
+ line-height: 1;
+}
+
+.shogi-kif .board-ranks .board-coordinate {
+ width: var(--shogi-cell-size);
+ height: var(--shogi-cell-size);
+}
+
+.shogi-kif .player-info {
+ display: flex;
+ flex-direction: column;
+ align-items: center;
+ gap: 2px;
+ font-size: 0.95em;
+ text-align: center;
+}
+
+.shogi-kif .player-info .player-name {
+ font-weight: 600;
+}
+
+.shogi-kif .player-info .player-time {
+ font-variant-numeric: tabular-nums;
+ color: var(--text-muted);
+ font-size: 0.85em;
+}
+
+.shogi-kif .board-wrapper .board-with-coordinates {
+ grid-area: board;
+ justify-self: center;
 }
 .shogi-kif .move-list {
 flex: 1 1 220px;
@@ -324,13 +398,13 @@ opacity: 0.6;
 }
 .shogi-kif .board {
 display: grid;
-grid-template-columns: repeat(9, 36px);
-grid-template-rows: repeat(9, 36px);
-gap: 2px;
+grid-template-columns: repeat(9, var(--shogi-cell-size));
+grid-template-rows: repeat(9, var(--shogi-cell-size));
+gap: var(--shogi-cell-gap);
 user-select: none;
 }
 .shogi-kif .cell {
-  width: 36px; height: 36px;
+  width: var(--shogi-cell-size); height: var(--shogi-cell-size);
   display: flex; align-items: center; justify-content: center;
   background: var(--background-secondary);
   border-radius: 4px;

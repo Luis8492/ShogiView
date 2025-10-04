@@ -34,6 +34,8 @@ interface ParsedMove extends Move {
 
 const JP_NUM_FULL = '１２３４５６７８９';
 const JP_NUM_KANJI = '一二三四五六七八九';
+const BOARD_FILE_LABELS = Array.from(JP_NUM_FULL).reverse();
+const BOARD_RANK_LABELS = Array.from(JP_NUM_KANJI);
 function jpDigitToNum(ch: string): number {
   const fullIdx = JP_NUM_FULL.indexOf(ch);
   if (fullIdx >= 0) return fullIdx + 1;
@@ -484,9 +486,10 @@ export default class ShogiKifViewer extends Plugin {
     const boardArea = layout.createDiv({ cls: 'board-area' });
     const boardWrapper = boardArea.createDiv({ cls: 'board-wrapper' });
     const handOpponent = boardWrapper.createDiv({ cls: 'hands hands-opponent' });
-    const boardHost = boardWrapper.createDiv({ cls: 'board' });
+    const boardWithCoordinates = boardWrapper.createDiv({ cls: 'board-with-coordinates' });
     const handPlayer = boardWrapper.createDiv({ cls: 'hands hands-player' });
     const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
+    let boardHost: HTMLDivElement;
     const meta = boardArea.createDiv({ cls: 'meta' });
 
     const splitter = layout.createDiv({ cls: 'board-move-splitter' });
@@ -593,7 +596,74 @@ export default class ShogiKifViewer extends Plugin {
     }
 
     function renderBoard() {
-      boardHost.empty();
+      const sharedTime = header['持ち時間'];
+
+      const renderPlayerInfo = (container: HTMLElement, side: Side): boolean => {
+        const nameKey = side === 'B' ? '先手' : '後手';
+        const name = header[nameKey];
+        const timeKeys =
+          side === 'B'
+            ? ['先手持ち時間', '先手持時間']
+            : ['後手持ち時間', '後手持時間'];
+        let time: string | undefined;
+        for (const key of timeKeys) {
+          const value = header[key];
+          if (value) {
+            time = value;
+            break;
+          }
+        }
+        if (!time && side === 'B' && sharedTime) {
+          time = sharedTime;
+        }
+        if (name) {
+          container.createSpan({ cls: 'player-name', text: name });
+        }
+        if (time) {
+          container.createSpan({ cls: 'player-time', text: time });
+        }
+        return container.childElementCount > 0;
+      };
+
+      const addFileLabels = (container: HTMLElement) => {
+        for (const label of BOARD_FILE_LABELS) {
+          container.createSpan({ cls: 'board-coordinate board-coordinate-file', text: label });
+        }
+      };
+
+      const addRankLabels = (container: HTMLElement) => {
+        for (const label of BOARD_RANK_LABELS) {
+          container.createSpan({ cls: 'board-coordinate board-coordinate-rank', text: label });
+        }
+      };
+
+      boardWithCoordinates.empty();
+
+      const goteInfo = boardWithCoordinates.createDiv({ cls: 'player-info player-info-opponent' });
+      if (!renderPlayerInfo(goteInfo, 'W')) {
+        goteInfo.remove();
+      }
+
+      const filesTop = boardWithCoordinates.createDiv({ cls: 'board-files board-files-top' });
+      addFileLabels(filesTop);
+
+      const middle = boardWithCoordinates.createDiv({ cls: 'board-middle' });
+      const ranksLeft = middle.createDiv({ cls: 'board-ranks board-ranks-left' });
+      addRankLabels(ranksLeft);
+
+      boardHost = middle.createDiv({ cls: 'board' });
+
+      const ranksRight = middle.createDiv({ cls: 'board-ranks board-ranks-right' });
+      addRankLabels(ranksRight);
+
+      const filesBottom = boardWithCoordinates.createDiv({ cls: 'board-files board-files-bottom' });
+      addFileLabels(filesBottom);
+
+      const senteInfo = boardWithCoordinates.createDiv({ cls: 'player-info player-info-player' });
+      if (!renderPlayerInfo(senteInfo, 'B')) {
+        senteInfo.remove();
+      }
+
       for (let r = 1; r <= 9; r++) {
         for (let f = 9; f >= 1; f--) {
           const cell = boardHost.createDiv({ cls: 'cell' });
