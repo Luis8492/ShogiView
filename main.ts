@@ -358,10 +358,46 @@ export default class ShogiKifViewer extends Plugin {
     const lineState = new WeakMap<VariationLine, number>();
 
     const toolbar = container.createDiv({ cls: 'toolbar' });
-    const btnFirst = toolbar.createEl('button', { text: '⏮ 最初' });
-    const btnPrev = toolbar.createEl('button', { text: '◀ 一手戻る' });
-    const btnNext = toolbar.createEl('button', { text: '一手進む ▶' });
-    const btnLast = toolbar.createEl('button', { text: '最後 ⏭' });
+    const btnFirst = toolbar.createEl('button', {
+      text: '⏮ 最初',
+      attr: {
+        type: 'button',
+        'aria-label': '最初の手へ移動 (Home)',
+        title: '最初の手へ移動 (Home)',
+      },
+    });
+    const btnPrev = toolbar.createEl('button', {
+      text: '◀ 一手戻る',
+      attr: {
+        type: 'button',
+        'aria-label': '一手戻る (ArrowLeft)',
+        title: '一手戻る (ArrowLeft)',
+      },
+    });
+    const btnNext = toolbar.createEl('button', {
+      text: '一手進む ▶',
+      attr: {
+        type: 'button',
+        'aria-label': '一手進む (ArrowRight)',
+        title: '一手進む (ArrowRight)',
+      },
+    });
+    const btnLast = toolbar.createEl('button', {
+      text: '最後 ⏭',
+      attr: {
+        type: 'button',
+        'aria-label': '最後の手へ移動 (End)',
+        title: '最後の手へ移動 (End)',
+      },
+    });
+    const btnPlayPause = toolbar.createEl('button', {
+      text: '▶ 自動再生',
+      attr: {
+        type: 'button',
+        'aria-label': '自動再生を開始 (Space)',
+        title: '自動再生を開始 (Space)',
+      },
+    });
 
     const startMoveControls = toolbar.createDiv({ cls: 'start-move-control' });
     startMoveControls.createSpan({ cls: 'start-move-label', text: '表示開始手:' });
@@ -389,6 +425,60 @@ export default class ShogiKifViewer extends Plugin {
     const variationSelect = variationBar.createEl('select');
     variationSelect.addClass('variation-select');
     let availableVariations: VariationLine[] = [];
+
+    const plugin = this;
+    const AUTOPLAY_INTERVAL_MS = 1500;
+    let isPlaying = false;
+    let autoPlayIntervalId: number | null = null;
+
+    function updatePlayButton() {
+      if (isPlaying) {
+        btnPlayPause.setText('⏸ 停止');
+        btnPlayPause.setAttr('aria-label', '自動再生を停止 (Space)');
+        btnPlayPause.setAttr('title', '自動再生を停止 (Space)');
+        btnPlayPause.setAttr('aria-pressed', 'true');
+      } else {
+        btnPlayPause.setText('▶ 自動再生');
+        btnPlayPause.setAttr('aria-label', '自動再生を開始 (Space)');
+        btnPlayPause.setAttr('title', '自動再生を開始 (Space)');
+        btnPlayPause.setAttr('aria-pressed', 'false');
+      }
+    }
+
+    function stopAutoplay() {
+      if (autoPlayIntervalId !== null) {
+        window.clearInterval(autoPlayIntervalId);
+        autoPlayIntervalId = null;
+      }
+      if (isPlaying) {
+        isPlaying = false;
+        updatePlayButton();
+      }
+    }
+
+    function startAutoplay() {
+      if (isPlaying) return;
+      isPlaying = true;
+      const id = window.setInterval(() => {
+        if (currentMoveIdx >= currentLine.moves.length) {
+          stopAutoplay();
+          return;
+        }
+        applyCurrent(Math.min(currentLine.moves.length, currentMoveIdx + 1));
+        updateVariationUI();
+      }, AUTOPLAY_INTERVAL_MS);
+      autoPlayIntervalId = id;
+      plugin.registerInterval(id);
+      updatePlayButton();
+    }
+
+    function toggleAutoplay() {
+      if (isPlaying) {
+        stopAutoplay();
+      } else {
+        startAutoplay();
+      }
+    }
 
     const layout = container.createDiv({ cls: 'board-layout' });
     const boardArea = layout.createDiv({ cls: 'board-area' });
@@ -503,6 +593,7 @@ export default class ShogiKifViewer extends Plugin {
     }
 
     function jumpTo(line: VariationLine, moveIndex: number) {
+      stopAutoplay();
       lineState.set(currentLine, currentMoveIdx);
       currentLine = line;
       const targetCount = Math.max(0, Math.min(moveIndex + 1, currentLine.moves.length));
@@ -539,6 +630,7 @@ export default class ShogiKifViewer extends Plugin {
       if (!Number.isFinite(moveNumber) || moveNumber < 0) {
         return false;
       }
+      stopAutoplay();
       if (moveNumber === 0) {
         applyCurrent(0);
         updateVariationUI();
@@ -756,6 +848,9 @@ export default class ShogiKifViewer extends Plugin {
       renderHands();
       updateMeta();
       updateComments();
+      if (isPlaying && currentMoveIdx >= currentLine.moves.length) {
+        stopAutoplay();
+      }
     }
 
     function updateVariationUI() {
@@ -814,6 +909,7 @@ export default class ShogiKifViewer extends Plugin {
     }
 
     function switchToVariation(variation: VariationLine) {
+      stopAutoplay();
       lineState.set(currentLine, currentMoveIdx);
       currentLine = variation;
       const saved = lineState.get(currentLine);
@@ -828,6 +924,7 @@ export default class ShogiKifViewer extends Plugin {
     function goToParent() {
       const parentInfo = currentLine.parent;
       if (!parentInfo) return;
+      stopAutoplay();
       lineState.set(currentLine, currentMoveIdx);
       currentLine = parentInfo.line;
       const saved = lineState.get(currentLine);
@@ -840,20 +937,27 @@ export default class ShogiKifViewer extends Plugin {
     }
 
     btnFirst.onclick = () => {
+      stopAutoplay();
       applyCurrent(0);
       updateVariationUI();
     };
     btnPrev.onclick = () => {
+      stopAutoplay();
       applyCurrent(Math.max(0, currentMoveIdx - 1));
       updateVariationUI();
     };
     btnNext.onclick = () => {
+      stopAutoplay();
       applyCurrent(Math.min(currentLine.moves.length, currentMoveIdx + 1));
       updateVariationUI();
     };
     btnLast.onclick = () => {
+      stopAutoplay();
       applyCurrent(currentLine.moves.length);
       updateVariationUI();
+    };
+    btnPlayPause.onclick = () => {
+      toggleAutoplay();
     };
     btnParent.onclick = () => {
       goToParent();
@@ -904,6 +1008,75 @@ export default class ShogiKifViewer extends Plugin {
       }
     });
 
+    this.registerDomEvent(document, 'keydown', (event) => {
+      if (event.defaultPrevented) return;
+      const rawTarget = event.target as EventTarget | null;
+      const target = rawTarget instanceof HTMLElement ? rawTarget : null;
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+      const isEditable = (el: HTMLElement | null): boolean => {
+        if (!el) return false;
+        if (el.isContentEditable) return true;
+        const tag = el.tagName;
+        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      };
+
+      if (isEditable(target) || (target && target.closest('input, textarea, select, [contenteditable="true"]'))) {
+        return;
+      }
+      if (isEditable(activeElement) || (activeElement && activeElement.closest('input, textarea, select, [contenteditable="true"]'))) {
+        return;
+      }
+
+      const isWithinViewer = (element: Element | null): boolean => {
+        if (!element) return false;
+        return container.contains(element);
+      };
+
+      const targetIsBody = rawTarget === document.body;
+
+      if (!(isWithinViewer(target) || isWithinViewer(activeElement) || targetIsBody)) {
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowLeft':
+          event.preventDefault();
+          stopAutoplay();
+          applyCurrent(Math.max(0, currentMoveIdx - 1));
+          updateVariationUI();
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          stopAutoplay();
+          applyCurrent(Math.min(currentLine.moves.length, currentMoveIdx + 1));
+          updateVariationUI();
+          break;
+        case 'Home':
+          event.preventDefault();
+          stopAutoplay();
+          applyCurrent(0);
+          updateVariationUI();
+          break;
+        case 'End':
+          event.preventDefault();
+          stopAutoplay();
+          applyCurrent(currentLine.moves.length);
+          updateVariationUI();
+          break;
+        case ' ': // Space key in some browsers
+        case 'Space':
+        case 'Spacebar':
+          event.preventDefault();
+          toggleAutoplay();
+          break;
+        default:
+          break;
+      }
+    });
+
+    updatePlayButton();
     applyCurrent(0);
     updateVariationUI();
     if (requestedInitialMove !== undefined && !Number.isNaN(requestedInitialMove)) {
