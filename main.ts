@@ -934,6 +934,23 @@ export default class ShogiKifViewer extends Plugin {
       };
 
       renderVariationLine(root, tree, 0);
+      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current') as
+        | HTMLElement
+        | null;
+      if (currentMoveEl) {
+        const bodyRect = moveListBody.getBoundingClientRect();
+        const moveRect = currentMoveEl.getBoundingClientRect();
+        if (moveRect.top < bodyRect.top || moveRect.bottom > bodyRect.bottom) {
+          const behavior = isPlaying ? 'smooth' : 'auto';
+          currentMoveEl.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest',
+            behavior,
+          });
+        }
+      } else if (currentMoveIdx === 0) {
+        moveListBody.scrollTop = 0;
+      }
       requestStackedStateUpdate();
     }
 
