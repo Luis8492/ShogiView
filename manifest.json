@@ -1,7 +1,7 @@
 {
 "id": "shogi-kif-viewer",
 "name": "Shogi KIF Viewer",
-"version": "0.1.0",
+"version": "1.0.0",
 "minAppVersion": "1.5.0",
 "author": "Luis8492",
 "description": "Render interactive shogi boards from KIF code blocks in notes.",
