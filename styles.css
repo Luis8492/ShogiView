@@ -3,6 +3,12 @@ border: 1px solid var(--background-modifier-border);
 padding: 8px;
 border-radius: 8px;
 --shogi-promoted-color: #c92a2a;
+--shogi-prefix-sente-color: var(--color-orange, #d9480f);
+--shogi-prefix-gote-color: var(--color-blue, #1d6fda);
+--shogi-highlight-to-ring: rgba(var(--color-red-rgb, 204, 0, 0), 0.45);
+--shogi-highlight-to-bg: rgba(var(--color-red-rgb, 204, 0, 0), 0.08);
+--shogi-highlight-from-ring: rgba(var(--color-green-rgb, 106, 168, 79), 0.5);
+--shogi-highlight-from-bg: rgba(var(--color-green-rgb, 106, 168, 79), 0.12);
 --shogi-cell-size: 36px;
 --shogi-cell-gap: 2px;
 display: flex;
@@ -343,10 +349,10 @@ color: inherit;
 color: var(--shogi-promoted-color);
 }
 .shogi-kif .move-prefix-sente {
-color: #d9480f;
+color: var(--shogi-prefix-sente-color);
 }
 .shogi-kif .move-prefix-gote {
-color: #1d6fda;
+color: var(--shogi-prefix-gote-color);
 }
 .shogi-kif .variation-current {
 font-weight: 600;
@@ -423,13 +429,13 @@ user-select: none;
 }
 .shogi-kif .cell.highlight-to {
   outline: none;
-  box-shadow: inset 0 0 0 2px rgba(204, 0, 0, 0.45);
-  background-color: rgba(204, 0, 0, 0.08);
+  box-shadow: inset 0 0 0 2px var(--shogi-highlight-to-ring);
+  background-color: var(--shogi-highlight-to-bg);
 }
 .shogi-kif .cell.highlight-from {
   outline: none;
-  box-shadow: inset 0 0 0 2px rgba(106, 168, 79, 0.5);
-  background-color: rgba(106, 168, 79, 0.12);
+  box-shadow: inset 0 0 0 2px var(--shogi-highlight-from-ring);
+  background-color: var(--shogi-highlight-from-bg);
 }
 .shogi-kif .meta {
 margin-top: 6px; font-size: .9em; opacity: .9;
