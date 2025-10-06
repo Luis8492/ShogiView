@@ -199,6 +199,7 @@ overflow-y: auto;
 background: var(--background-primary);
 padding: 6px;
 height: 100%;
+max-height: 320px;
 }
 .shogi-kif .move-list-empty {
 padding: 8px;
