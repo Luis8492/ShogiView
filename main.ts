@@ -509,24 +509,6 @@ export default class ShogiKifViewer extends Plugin {
     let isStackedLayout = false;
     let stackedUpdateQueued = false;
 
-    function syncMoveListHeightToBoard() {
-      const boardHeight = Math.round(boardArea.getBoundingClientRect().height);
-      if (boardHeight > 0) {
-        moveListContainer.style.height = `${boardHeight}px`;
-      } else {
-        moveListContainer.style.removeProperty('height');
-      }
-      if (isStackedLayout) {
-        moveListContainer.style.flex = '0 0 auto';
-      } else {
-        moveListContainer.style.removeProperty('flex');
-      }
-    }
-
-    function applyMoveListSizing() {
-      syncMoveListHeightToBoard();
-    }
-
     function performStackedStateUpdate() {
       const layoutWidth = layout.clientWidth;
       const boardWidth = boardWrapper.getBoundingClientRect().width;
@@ -545,8 +527,6 @@ export default class ShogiKifViewer extends Plugin {
         splitter.setAttr('aria-orientation', 'horizontal');
         splitter.tabIndex = -1;
       }
-
-      applyMoveListSizing();
     }
 
     function requestStackedStateUpdate() {
@@ -564,7 +544,7 @@ export default class ShogiKifViewer extends Plugin {
     layoutResizeObserver.observe(layout);
     this.register(() => layoutResizeObserver.disconnect());
     const boardAreaResizeObserver = new ResizeObserver(() => {
-      syncMoveListHeightToBoard();
+      requestStackedStateUpdate();
     });
     boardAreaResizeObserver.observe(boardArea);
     this.register(() => boardAreaResizeObserver.disconnect());
@@ -827,13 +807,16 @@ export default class ShogiKifViewer extends Plugin {
 
       const tree = moveListBody.createDiv({ cls: 'variation-tree' });
 
+      const MAX_VARIATION_INDENT_CLASS_LEVEL = 20;
+
       const renderVariationLine = (
         line: VariationLine,
         parentEl: HTMLElement,
         indentLevel: number,
       ) => {
         const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
-        nodeEl.style.setProperty('--indent-level', indentLevel.toString());
+        const clampedIndentLevel = Math.min(indentLevel, MAX_VARIATION_INDENT_CLASS_LEVEL);
+        nodeEl.addClass(`indent-level-${clampedIndentLevel}`);
         if (activeLines.has(line)) {
           nodeEl.addClass('is-active-line');
         }

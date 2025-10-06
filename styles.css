@@ -71,7 +71,10 @@ flex-wrap: nowrap;
 
 .shogi-kif .board-layout.is-stacked .board-area,
 .shogi-kif .board-layout.is-stacked .move-list {
-width: 100%;
+  width: 100%;
+}
+.shogi-kif .board-layout.is-stacked .move-list {
+  flex: 0 0 auto;
 }
 
 .shogi-kif .board-layout .board-move-splitter {
@@ -209,9 +212,31 @@ padding: 2px 0;
 }
 .shogi-kif .variation-node {
 --variation-indent-size: 18px;
-padding-left: calc(var(--variation-indent-size) * var(--indent-level, 0));
+--indent-level: 0;
+padding-left: calc(var(--variation-indent-size) * var(--indent-level));
 border-left: 2px solid transparent;
 }
+.shogi-kif .variation-node.indent-level-0 { --indent-level: 0; }
+.shogi-kif .variation-node.indent-level-1 { --indent-level: 1; }
+.shogi-kif .variation-node.indent-level-2 { --indent-level: 2; }
+.shogi-kif .variation-node.indent-level-3 { --indent-level: 3; }
+.shogi-kif .variation-node.indent-level-4 { --indent-level: 4; }
+.shogi-kif .variation-node.indent-level-5 { --indent-level: 5; }
+.shogi-kif .variation-node.indent-level-6 { --indent-level: 6; }
+.shogi-kif .variation-node.indent-level-7 { --indent-level: 7; }
+.shogi-kif .variation-node.indent-level-8 { --indent-level: 8; }
+.shogi-kif .variation-node.indent-level-9 { --indent-level: 9; }
+.shogi-kif .variation-node.indent-level-10 { --indent-level: 10; }
+.shogi-kif .variation-node.indent-level-11 { --indent-level: 11; }
+.shogi-kif .variation-node.indent-level-12 { --indent-level: 12; }
+.shogi-kif .variation-node.indent-level-13 { --indent-level: 13; }
+.shogi-kif .variation-node.indent-level-14 { --indent-level: 14; }
+.shogi-kif .variation-node.indent-level-15 { --indent-level: 15; }
+.shogi-kif .variation-node.indent-level-16 { --indent-level: 16; }
+.shogi-kif .variation-node.indent-level-17 { --indent-level: 17; }
+.shogi-kif .variation-node.indent-level-18 { --indent-level: 18; }
+.shogi-kif .variation-node.indent-level-19 { --indent-level: 19; }
+.shogi-kif .variation-node.indent-level-20 { --indent-level: 20; }
 .shogi-kif .variation-node.is-active-line {
 border-left-color: var(--interactive-accent);
 }
