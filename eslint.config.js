@@ -2,6 +2,9 @@
 const obsidianmd = require("eslint-plugin-obsidianmd");
 
 module.exports = [
+  {
+    ignores: ["node_modules/", "main.js"],
+  },
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts"],
