@@ -193,7 +193,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
 
   const lines = text.split(/\r?\n/);
   const piecePattern = '((?:成香|成桂|成銀|馬|龍|と|歩|香|桂|銀|金|角|飛|玉|王)(?:右|左|直|上|引|寄)*(?:成|不成)?)';
-  const moveRe = new RegExp(`^\\s*(\\d+)\\s+((?:同(?:\\s|　)?)|[${JP_NUM_FULL}1-9${JP_NUM_KANJI}]{2})${piecePattern}(打?)(?:\\((\\d{2})\\))?(?:\\(([^\\)]*)\\))?`);
+  const moveRe = new RegExp(`^\\s*(\\d+)\\s+((?:同(?:\\s|\\u3000)?)|[${JP_NUM_FULL}1-9${JP_NUM_KANJI}]{2})${piecePattern}(打?)(?:\\((\\d{2})\\))?(?:\\(([^\\)]*)\\))?`);
   const variationRe = /^変化：(\d+)手/;
 
   for (const raw of lines) {
@@ -263,7 +263,7 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
     if (m) {
       const ctx = contextStack[contextStack.length - 1];
       const n = parseInt(m[1], 10);
-      const toToken = m[2].replace(/[\s　]/g, '');
+      const toToken = m[2].replace(/[\s\u3000]/g, '');
       let to: { f: number; r: number } | undefined;
       if (toToken === '同') {
         if (ctx.prevMove?.to) {
