@@ -11,8 +11,6 @@ export default [
       },
     },
     rules: {
-      // 推奨セットから外したいルールがあればここで上書き
-      // "obsidianmd/sample-names": "off",
     },
   },
 ];
