@@ -72,10 +72,6 @@ function initialBoard(): (Piece|null)[][] {
   return board;
 }
 
-function cloneBoard(B:(Piece|null)[][]){
-  return B.map(row=>row.map(c=>c?{...c}:null));
-}
-
 function promoteKind(kind: PieceKind): PieceKind {
   switch (kind) {
     case '歩': return 'と';
@@ -307,14 +303,6 @@ function parseKif(text: string): { header: Record<string,string>, root: Variatio
     }
   }
   return { header, root };
-}
-
-function squareToDisplayIndex(f:number,r:number): { row:number; col:number } {
-  // Board UI left-to-right: file 9..1, top-to-bottom: rank 1..9
-  // Given shogi coords (f:1..9 right->left from Sente, r:1..9 bottom->top for Sente), map to grid row/col
-  const row = r - 1;         // r=1 => row 0 (top)
-  const col = 9 - f;         // f=9 => col 0 (left)
-  return { row, col };
 }
 
 function numToFullWidth(n: number): string {
