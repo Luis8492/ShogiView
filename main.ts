@@ -361,16 +361,16 @@ export default class ShogiKifViewer extends Plugin {
       text: 'Step back ◀',
       attr: {
         type: 'button',
-        'aria-label': 'Step back one move (ArrowLeft)',
-        title: 'Step back one move (ArrowLeft)',
+        'aria-label': 'Step back one move (arrrow-left)',
+        title: 'Step back one move (arrrow-left)',
       },
     });
     const btnNext = toolbar.createEl('button', {
       text: 'Step forward ▶',
       attr: {
         type: 'button',
-        'aria-label': 'Step forward one move (ArrowRight)',
-        title: 'Step forward one move (ArrowRight)',
+        'aria-label': 'Step forward one move (arrow-right)',
+        title: 'Step forward one move (arrow-right)',
       },
     });
     const btnLast = toolbar.createEl('button', {
@@ -391,20 +391,20 @@ export default class ShogiKifViewer extends Plugin {
     });
 
     const startMoveControls = toolbar.createDiv({ cls: 'start-move-control' });
-    startMoveControls.createSpan({ cls: 'start-move-label', text: '表示開始手:' });
+    startMoveControls.createSpan({ cls: 'start-move-label', text: 'Jump to move:' });
     const startMoveInput = startMoveControls.createEl('input', {
       cls: 'start-move-input',
       attr: {
         type: 'number',
         min: '0',
         step: '1',
-        placeholder: '手数',
+        placeholder: 'move x',
         inputmode: 'numeric',
       },
     });
     const startMoveApply = startMoveControls.createEl('button', {
       cls: 'start-move-apply',
-      text: '移動',
+      text: 'Jump!',
       attr: { type: 'button' },
     });
     const startMoveFeedback = startMoveControls.createSpan({ cls: 'start-move-feedback' });
