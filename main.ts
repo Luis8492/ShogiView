@@ -339,7 +339,7 @@ function formatMoveLabel(mv: Move): string {
 export { parseKif, initialBoard, demoteKind, promoteKind };
 
 export default class ShogiKifViewer extends Plugin {
-  async onload() {
+  override onload(): void {
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
   }
 
