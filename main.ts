@@ -428,7 +428,6 @@ export default class ShogiKifViewer extends Plugin {
     variationSelect.addClass('variation-select');
     let availableVariations: VariationLine[] = [];
 
-    const plugin = this;
     const AUTOPLAY_INTERVAL_MS = 1500;
     let isPlaying = false;
     let autoPlayIntervalId: number | null = null;
@@ -458,7 +457,7 @@ export default class ShogiKifViewer extends Plugin {
       }
     }
 
-    function startAutoplay() {
+    const startAutoplay = () => {
       if (isPlaying) return;
       isPlaying = true;
       const id = window.setInterval(() => {
@@ -470,9 +469,9 @@ export default class ShogiKifViewer extends Plugin {
         updateVariationUI();
       }, AUTOPLAY_INTERVAL_MS);
       autoPlayIntervalId = id;
-      plugin.registerInterval(id);
+      this.registerInterval(id);
       updatePlayButton();
-    }
+    };
 
     function toggleAutoplay() {
       if (isPlaying) {
