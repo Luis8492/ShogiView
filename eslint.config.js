@@ -1,7 +1,7 @@
 // eslint.config.js
-import obsidianmd from "eslint-plugin-obsidianmd";
+const obsidianmd = require("eslint-plugin-obsidianmd");
 
-export default [
+module.exports = [
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.ts"],
