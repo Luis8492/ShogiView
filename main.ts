@@ -361,43 +361,43 @@ export default class ShogiKifViewer extends Plugin {
 
     const toolbar = container.createDiv({ cls: 'toolbar' });
     const btnFirst = toolbar.createEl('button', {
-      text: '⏮ 最初',
+      text: '⏮ Go to start',
       attr: {
         type: 'button',
-        'aria-label': '最初の手へ移動 (Home)',
-        title: '最初の手へ移動 (Home)',
+        'aria-label': 'Go to the first move (Home)',
+        title: 'Go to the first move (Home)',
       },
     });
     const btnPrev = toolbar.createEl('button', {
-      text: '◀ 一手戻る',
+      text: '◀ Step back',
       attr: {
         type: 'button',
-        'aria-label': '一手戻る (ArrowLeft)',
-        title: '一手戻る (ArrowLeft)',
+        'aria-label': 'Step back one move (ArrowLeft)',
+        title: 'Step back one move (ArrowLeft)',
       },
     });
     const btnNext = toolbar.createEl('button', {
-      text: '一手進む ▶',
+      text: 'Step forward ▶',
       attr: {
         type: 'button',
-        'aria-label': '一手進む (ArrowRight)',
-        title: '一手進む (ArrowRight)',
+        'aria-label': 'Step forward one move (ArrowRight)',
+        title: 'Step forward one move (ArrowRight)',
       },
     });
     const btnLast = toolbar.createEl('button', {
-      text: '最後 ⏭',
+      text: 'Go to end ⏭',
       attr: {
         type: 'button',
-        'aria-label': '最後の手へ移動 (End)',
-        title: '最後の手へ移動 (End)',
+        'aria-label': 'Go to the final move (End)',
+        title: 'Go to the final move (End)',
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
-      text: '▶ 自動再生',
+      text: '▶ Start autoplay',
       attr: {
         type: 'button',
-        'aria-label': '自動再生を開始 (Space)',
-        title: '自動再生を開始 (Space)',
+        'aria-label': 'Start autoplay (Space)',
+        title: 'Start autoplay (Space)',
       },
     });
 
@@ -422,7 +422,7 @@ export default class ShogiKifViewer extends Plugin {
 
     const variationBar = container.createDiv({ cls: 'variation-bar' });
     const pathLabel = variationBar.createSpan({ cls: 'variation-current' });
-    const btnParent = variationBar.createEl('button', { text: '↩ 親の手順へ' });
+    const btnParent = variationBar.createEl('button', { text: '↩ Return to parent line' });
     btnParent.addClass('variation-parent');
     const variationSelect = variationBar.createEl('select');
     variationSelect.addClass('variation-select');
@@ -435,14 +435,14 @@ export default class ShogiKifViewer extends Plugin {
 
     function updatePlayButton() {
       if (isPlaying) {
-        btnPlayPause.setText('⏸ 停止');
-        btnPlayPause.setAttr('aria-label', '自動再生を停止 (Space)');
-        btnPlayPause.setAttr('title', '自動再生を停止 (Space)');
+        btnPlayPause.setText('⏸ Pause autoplay');
+        btnPlayPause.setAttr('aria-label', 'Pause autoplay (Space)');
+        btnPlayPause.setAttr('title', 'Pause autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'true');
       } else {
-        btnPlayPause.setText('▶ 自動再生');
-        btnPlayPause.setAttr('aria-label', '自動再生を開始 (Space)');
-        btnPlayPause.setAttr('title', '自動再生を開始 (Space)');
+        btnPlayPause.setText('▶ Start autoplay');
+        btnPlayPause.setAttr('aria-label', 'Start autoplay (Space)');
+        btnPlayPause.setAttr('title', 'Start autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'false');
       }
     }
