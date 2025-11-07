@@ -920,10 +920,8 @@ export default class ShogiKifViewer extends Plugin {
       };
 
       renderVariationLine(root, tree, 0);
-      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current') as
-        | HTMLElement
-        | null;
-      if (currentMoveEl) {
+      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
+      if (currentMoveEl instanceof HTMLElement) {
         const bodyRect = moveListBody.getBoundingClientRect();
         const moveRect = currentMoveEl.getBoundingClientRect();
         if (moveRect.top < bodyRect.top || moveRect.bottom > bodyRect.bottom) {
@@ -934,7 +932,8 @@ export default class ShogiKifViewer extends Plugin {
             behavior,
           });
         }
-      } else if (currentMoveIdx === 0) {
+      }
+      if (!currentMoveEl && currentMoveIdx === 0) {
         moveListBody.scrollTop = 0;
       }
       requestStackedStateUpdate();
@@ -1158,7 +1157,7 @@ export default class ShogiKifViewer extends Plugin {
 
     this.registerDomEvent(document, 'keydown', (event) => {
       if (event.defaultPrevented) return;
-      const rawTarget = event.target as EventTarget | null;
+      const rawTarget = event.target;
       const target = rawTarget instanceof HTMLElement ? rawTarget : null;
       const activeElement =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
