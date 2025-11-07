@@ -42,6 +42,9 @@ module.exports = (async () => {
         },
       },
       rules: {
+	'obsidianmd/ui/sentence-case': ['warn', {
+        allowAutoFix: true,
+      }],
       },
     },
   ];

@@ -353,8 +353,8 @@ export default class ShogiKifViewer extends Plugin {
       text: 'Go to start ⏮',
       attr: {
         type: 'button',
-        'aria-label': 'Go to the first move (Home)',
-        title: 'Go to the first move (Home)',
+        'aria-label': 'Go to the first move (home)',
+        title: 'Go to the first move (home)',
       },
     });
     const btnPrev = toolbar.createEl('button', {
@@ -377,16 +377,16 @@ export default class ShogiKifViewer extends Plugin {
       text: 'Go to end ⏭',
       attr: {
         type: 'button',
-        'aria-label': 'Go to the final move (End)',
-        title: 'Go to the final move (End)',
+        'aria-label': 'Go to the final move (end)',
+        title: 'Go to the final move (end)',
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
       text: 'Start autoplay ▶',
       attr: {
         type: 'button',
-        'aria-label': 'Start autoplay (Space)',
-        title: 'Start autoplay (Space)',
+        'aria-label': 'Start autoplay (space)',
+        title: 'Start autoplay (space)',
       },
     });
 
