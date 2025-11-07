@@ -350,7 +350,7 @@ export default class ShogiKifViewer extends Plugin {
 
     const toolbar = container.createDiv({ cls: 'toolbar' });
     const btnFirst = toolbar.createEl('button', {
-      text: '⏮ Go to start',
+      text: 'Go to start ⏮',
       attr: {
         type: 'button',
         'aria-label': 'Go to the first move (Home)',
@@ -358,7 +358,7 @@ export default class ShogiKifViewer extends Plugin {
       },
     });
     const btnPrev = toolbar.createEl('button', {
-      text: '◀ Step back',
+      text: 'Step back ◀',
       attr: {
         type: 'button',
         'aria-label': 'Step back one move (ArrowLeft)',
@@ -382,7 +382,7 @@ export default class ShogiKifViewer extends Plugin {
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
-      text: '▶ Start autoplay',
+      text: 'Start autoplay ▶',
       attr: {
         type: 'button',
         'aria-label': 'Start autoplay (Space)',
@@ -411,7 +411,7 @@ export default class ShogiKifViewer extends Plugin {
 
     const variationBar = container.createDiv({ cls: 'variation-bar' });
     const pathLabel = variationBar.createSpan({ cls: 'variation-current' });
-    const btnParent = variationBar.createEl('button', { text: '↩ Return to parent line' });
+    const btnParent = variationBar.createEl('button', { text: 'Return to parent line ↩' });
     btnParent.addClass('variation-parent');
     const variationSelect = variationBar.createEl('select');
     variationSelect.addClass('variation-select');
@@ -423,12 +423,12 @@ export default class ShogiKifViewer extends Plugin {
 
     function updatePlayButton() {
       if (isPlaying) {
-        btnPlayPause.setText('⏸ Pause autoplay');
+        btnPlayPause.setText('Pause autoplay ⏸');
         btnPlayPause.setAttr('aria-label', 'Pause autoplay (Space)');
         btnPlayPause.setAttr('title', 'Pause autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'true');
       } else {
-        btnPlayPause.setText('▶ Start autoplay');
+        btnPlayPause.setText('Start autoplay ▶');
         btnPlayPause.setAttr('aria-label', 'Start autoplay (Space)');
         btnPlayPause.setAttr('title', 'Start autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'false');
