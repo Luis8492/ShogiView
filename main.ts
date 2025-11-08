@@ -398,7 +398,7 @@ export default class ShogiKifViewer extends Plugin {
         type: 'number',
         min: '0',
         step: '1',
-        placeholder: 'move x',
+        placeholder: 'Move x',
         inputmode: 'numeric',
       },
     });
