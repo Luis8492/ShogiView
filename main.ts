@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext } from 'obsidian';
+import { App, MarkdownPostProcessorContext, MarkdownRenderChild, Plugin, Scope } from 'obsidian';
 
 // --- Types & helpers ---
 type Side = 'B' | 'W'; // B=先手, W=後手
@@ -326,13 +326,106 @@ function formatMoveLabel(mv: Move): string {
 
 export { parseKif, initialBoard, demoteKind, promoteKind };
 
+class ShogiKifKeymap extends MarkdownRenderChild {
+  constructor(
+    private readonly app: App,
+    containerEl: HTMLElement,
+    private readonly onArrowLeft: () => void,
+    private readonly onArrowRight: () => void,
+    private readonly onHome: () => void,
+    private readonly onEnd: () => void,
+    private readonly onToggleAutoplay: () => void,
+  ) {
+    super(containerEl);
+    this.scope = new Scope(app.scope);
+  }
+
+  private readonly scope: Scope;
+
+  private isEditable(el: HTMLElement | null): boolean {
+    if (!el) return false;
+    if (el.isContentEditable) return true;
+    const tag = el.tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
+  private isWithinViewer(element: Element | null): boolean {
+    if (!element) return false;
+    return this.containerEl.contains(element);
+  }
+
+  private shouldHandle(event: KeyboardEvent): boolean {
+    const rawTarget = event.target;
+    const target = rawTarget instanceof HTMLElement ? rawTarget : null;
+    const activeElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    if (
+      this.isEditable(target) ||
+      (target && target.closest('input, textarea, select, [contenteditable="true"]'))
+    ) {
+      return false;
+    }
+
+    if (
+      this.isEditable(activeElement) ||
+      (activeElement &&
+        activeElement.closest('input, textarea, select, [contenteditable="true"]'))
+    ) {
+      return false;
+    }
+
+    const targetIsBody = rawTarget === document.body;
+
+    return (
+      this.isWithinViewer(target) || this.isWithinViewer(activeElement) || targetIsBody
+    );
+  }
+
+  override onload(): void {
+    this.app.keymap.pushScope(this.scope);
+    this.register(() => this.app.keymap.popScope(this.scope));
+
+    this.scope.register([], 'ArrowLeft', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onArrowLeft();
+    });
+    this.scope.register([], 'ArrowRight', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onArrowRight();
+    });
+    this.scope.register([], 'Home', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onHome();
+    });
+    this.scope.register([], 'End', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onEnd();
+    });
+    this.scope.register([], 'Space', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onToggleAutoplay();
+    });
+    this.scope.register([], ' ', (event: KeyboardEvent) => {
+      if (!this.shouldHandle(event)) return;
+      event.preventDefault();
+      this.onToggleAutoplay();
+    });
+  }
+}
+
 export default class ShogiKifViewer extends Plugin {
   override onload(): Promise<void> {
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
     return Promise.resolve();
   }
 
-  renderKif(src: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) {
+  renderKif(src: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
     const container = el.createDiv({ cls: 'shogi-kif' });
     const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?|初期表示手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
     const requestedInitialMove = startMoveMatch ? parseInt(startMoveMatch[1], 10) : undefined;
@@ -1144,73 +1237,35 @@ export default class ShogiKifViewer extends Plugin {
       }
     });
 
-    this.registerDomEvent(document, 'keydown', (event) => {
-      if (event.defaultPrevented) return;
-      const rawTarget = event.target;
-      const target = rawTarget instanceof HTMLElement ? rawTarget : null;
-      const activeElement =
-        document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-      const isEditable = (el: HTMLElement | null): boolean => {
-        if (!el) return false;
-        if (el.isContentEditable) return true;
-        const tag = el.tagName;
-        return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
-      };
-
-      if (isEditable(target) || (target && target.closest('input, textarea, select, [contenteditable="true"]'))) {
-        return;
-      }
-      if (isEditable(activeElement) || (activeElement && activeElement.closest('input, textarea, select, [contenteditable="true"]'))) {
-        return;
-      }
-
-      const isWithinViewer = (element: Element | null): boolean => {
-        if (!element) return false;
-        return container.contains(element);
-      };
-
-      const targetIsBody = rawTarget === document.body;
-
-      if (!(isWithinViewer(target) || isWithinViewer(activeElement) || targetIsBody)) {
-        return;
-      }
-
-      switch (event.key) {
-        case 'ArrowLeft':
-          event.preventDefault();
+    ctx.addChild(
+      new ShogiKifKeymap(
+        this.app,
+        container,
+        () => {
           stopAutoplay();
           applyCurrent(Math.max(0, currentMoveIdx - 1));
           updateVariationUI();
-          break;
-        case 'ArrowRight':
-          event.preventDefault();
+        },
+        () => {
           stopAutoplay();
           applyCurrent(Math.min(currentLine.moves.length, currentMoveIdx + 1));
           updateVariationUI();
-          break;
-        case 'Home':
-          event.preventDefault();
+        },
+        () => {
           stopAutoplay();
           applyCurrent(0);
           updateVariationUI();
-          break;
-        case 'End':
-          event.preventDefault();
+        },
+        () => {
           stopAutoplay();
           applyCurrent(currentLine.moves.length);
           updateVariationUI();
-          break;
-        case ' ': // Space key in some browsers
-        case 'Space':
-        case 'Spacebar':
-          event.preventDefault();
+        },
+        () => {
           toggleAutoplay();
-          break;
-        default:
-          break;
-      }
-    });
+        },
+      ),
+    );
 
     updatePlayButton();
     applyCurrent(0);
