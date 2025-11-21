@@ -1,4 +1,4 @@
-import { Plugin, MarkdownPostProcessorContext } from 'obsidian';
+import { Plugin, MarkdownPostProcessorContext, MarkdownRenderChild } from 'obsidian';
 
 // --- Types & helpers ---
 type Side = 'B' | 'W'; // B=先手, W=後手
@@ -326,14 +326,25 @@ function formatMoveLabel(mv: Move): string {
 
 export { parseKif, initialBoard, demoteKind, promoteKind };
 
+class ShogiKifRenderChild extends MarkdownRenderChild {
+  constructor(containerEl: HTMLElement) {
+    super(containerEl);
+    containerEl.tabIndex = 0;
+    containerEl.setAttr('role', 'region');
+    containerEl.setAttr('aria-label', 'Shogi KIF viewer');
+  }
+}
+
 export default class ShogiKifViewer extends Plugin {
   override onload(): Promise<void> {
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
     return Promise.resolve();
   }
 
-  renderKif(src: string, el: HTMLElement, _ctx: MarkdownPostProcessorContext) {
+  renderKif(src: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
     const container = el.createDiv({ cls: 'shogi-kif' });
+    const renderChild = new ShogiKifRenderChild(container);
+    ctx.addChild(renderChild);
     const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?|初期表示手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
     const requestedInitialMove = startMoveMatch ? parseInt(startMoveMatch[1], 10) : undefined;
     const { header, root } = parseKif(src);
@@ -458,7 +469,7 @@ export default class ShogiKifViewer extends Plugin {
         updateVariationUI();
       }, AUTOPLAY_INTERVAL_MS);
       autoPlayIntervalId = id;
-      this.registerInterval(id);
+      renderChild.registerInterval(id);
       updatePlayButton();
     };
 
@@ -530,13 +541,13 @@ export default class ShogiKifViewer extends Plugin {
       requestStackedStateUpdate();
     });
     layoutResizeObserver.observe(layout);
-    this.register(() => layoutResizeObserver.disconnect());
+    renderChild.register(() => layoutResizeObserver.disconnect());
     const boardAreaResizeObserver = new ResizeObserver(() => {
       requestStackedStateUpdate();
     });
     boardAreaResizeObserver.observe(boardArea);
-    this.register(() => boardAreaResizeObserver.disconnect());
-    this.registerDomEvent(window, 'resize', () => {
+    renderChild.register(() => boardAreaResizeObserver.disconnect());
+    renderChild.registerDomEvent(window, 'resize', () => {
       requestStackedStateUpdate();
     });
 
@@ -1144,7 +1155,7 @@ export default class ShogiKifViewer extends Plugin {
       }
     });
 
-    this.registerDomEvent(document, 'keydown', (event) => {
+    renderChild.registerDomEvent(container, 'keydown', (event) => {
       if (event.defaultPrevented) return;
       const rawTarget = event.target;
       const target = rawTarget instanceof HTMLElement ? rawTarget : null;
@@ -1162,17 +1173,6 @@ export default class ShogiKifViewer extends Plugin {
         return;
       }
       if (isEditable(activeElement) || (activeElement && activeElement.closest('input, textarea, select, [contenteditable="true"]'))) {
-        return;
-      }
-
-      const isWithinViewer = (element: Element | null): boolean => {
-        if (!element) return false;
-        return container.contains(element);
-      };
-
-      const targetIsBody = rawTarget === document.body;
-
-      if (!(isWithinViewer(target) || isWithinViewer(activeElement) || targetIsBody)) {
         return;
       }
 
