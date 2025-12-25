@@ -922,8 +922,10 @@ export default class ShogiKifViewer extends Plugin {
       renderVariationLine(root, tree, 0);
       const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
       if (currentMoveEl instanceof HTMLElement) {
-        const moveTop = currentMoveEl.offsetTop;
-        const moveBottom = moveTop + currentMoveEl.offsetHeight;
+        const moveRect = currentMoveEl.getBoundingClientRect();
+        const bodyRect = moveListBody.getBoundingClientRect();
+        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
+        const moveBottom = moveTop + moveRect.height;
         const viewTop = moveListBody.scrollTop;
         const viewBottom = viewTop + moveListBody.clientHeight;
         const margin = 8;
