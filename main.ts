@@ -922,15 +922,23 @@ export default class ShogiKifViewer extends Plugin {
       renderVariationLine(root, tree, 0);
       const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
       if (currentMoveEl instanceof HTMLElement) {
-        const bodyRect = moveListBody.getBoundingClientRect();
         const moveRect = currentMoveEl.getBoundingClientRect();
-        if (moveRect.top < bodyRect.top || moveRect.bottom > bodyRect.bottom) {
+        const bodyRect = moveListBody.getBoundingClientRect();
+        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
+        const moveBottom = moveTop + moveRect.height;
+        const viewTop = moveListBody.scrollTop;
+        const viewBottom = viewTop + moveListBody.clientHeight;
+        const margin = 8;
+        let targetTop: number | null = null;
+        if (moveTop - margin < viewTop) {
+          targetTop = Math.max(moveTop - margin, 0);
+        } else if (moveBottom + margin > viewBottom) {
+          const maxTop = Math.max(moveListBody.scrollHeight - moveListBody.clientHeight, 0);
+          targetTop = Math.min(moveBottom + margin - moveListBody.clientHeight, maxTop);
+        }
+        if (targetTop !== null) {
           const behavior = isPlaying ? 'smooth' : 'auto';
-          currentMoveEl.scrollIntoView({
-            block: 'nearest',
-            inline: 'nearest',
-            behavior,
-          });
+          moveListBody.scrollTo({ top: targetTop, behavior });
         }
       }
       if (!currentMoveEl && currentMoveIdx === 0) {
