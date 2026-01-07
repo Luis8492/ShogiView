@@ -69,6 +69,22 @@ const installDomHelpers = () => {
     };
   }
 
+  if (!proto.removeClass) {
+    proto.removeClass = function removeClass(...cls: string[]) {
+      this.classList.remove(...cls);
+    };
+  }
+
+  if (!proto.toggleClass) {
+    proto.toggleClass = function toggleClass(cls: string, force?: boolean) {
+      if (force === undefined) {
+        this.classList.toggle(cls);
+        return;
+      }
+      this.classList.toggle(cls, force);
+    };
+  }
+
   if (!proto.empty) {
     proto.empty = function empty() {
       while (this.firstChild) {
