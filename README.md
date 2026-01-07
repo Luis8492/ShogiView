@@ -77,6 +77,16 @@ npm run build
 
 After building, copy the generated `main.js` and `manifest.json` (and `styles.css` if needed) into your target vault to test.
 
+### UI Preview (standalone)
+
+If you want to check the UI in a browser without launching Obsidian, bundle the preview entry and open the HTML file.
+
+```bash
+npx esbuild preview/preview.ts --bundle --format=esm --outfile=preview/preview.js
+```
+
+Then open `preview/index.html` in a browser. The preview uses a small mock app object and DOM helpers to render the same UI as the plugin.
+
 ## Future Roadmap
 - language
 

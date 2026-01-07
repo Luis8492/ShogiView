@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShogiView Preview</title>
+  <link rel="stylesheet" href="../styles.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: #f5f5f5;
+    }
+    .preview-shell {
+      min-height: 100vh;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    .preview-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+      max-width: 1100px;
+      margin: 0 auto;
+      height: calc(100vh - 48px);
+    }
+    .preview-card h1 {
+      font-size: 18px;
+      margin: 0 0 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <div class="preview-card">
+      <h1>ShogiView UI Preview</h1>
+      <div id="shogi-preview-root"></div>
+    </div>
+  </div>
+  <script type="module" src="./preview.js"></script>
+</body>
+</html>
