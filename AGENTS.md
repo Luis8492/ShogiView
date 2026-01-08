@@ -242,6 +242,11 @@ this.registerInterval(window.setInterval(() => { /* ... */ }, 1000));
 - Settings not persisting: ensure `loadData`/`saveData` are awaited and you re-render the UI after changes.
 - Mobile-only issues: confirm you're not using desktop-only APIs; check `isDesktopOnly` and adjust.
 
+## Codex UI checks
+
+- Codex 環境ではブラウザツールを使ってスクリーンショットを取得する。
+- スクリーンショットのファイル（png など）はリポジトリに含めない。
+
 ## References
 
 - Obsidian sample plugin: https://github.com/obsidianmd/obsidian-sample-plugin
