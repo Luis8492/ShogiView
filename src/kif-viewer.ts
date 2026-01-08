@@ -905,8 +905,8 @@ export function renderKif(
         if (!childFirst) continue;
         const parentLine = parentInfo.line;
         const parentMove =
-          parentLine.moves.find((mv) => mv.n === line.startMoveNumber)
-          ?? (parentInfo.anchorMoveCount > 0 ? parentLine.moves[parentInfo.anchorMoveCount - 1] : undefined);
+          (parentInfo.anchorMoveCount > 0 ? parentLine.moves[parentInfo.anchorMoveCount - 1] : undefined)
+          ?? parentLine.moves.find((mv) => mv.n === line.startMoveNumber - 1);
         if (!parentMove) continue;
         const parentNode = nodeByMove.get(parentMove);
         if (!parentNode) continue;
