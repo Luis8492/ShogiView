@@ -948,11 +948,15 @@ export function renderKif(
         const node = tree.nodes[nodeId];
         maxDepth = Math.max(maxDepth, depth);
         positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y: yStart, depth };
-        let cursor = yStart + NODE_HEIGHT + V_GAP;
-        for (const childId of node.childIds) {
+        if (!node.childIds.length) {
+          return yStart + NODE_HEIGHT + V_GAP;
+        }
+        const [mainChild, ...branchChildren] = node.childIds;
+        let cursor = layoutNode(mainChild, depth + 1, yStart);
+        for (const childId of branchChildren) {
           cursor = layoutNode(childId, depth + 1, cursor);
         }
-        return cursor;
+        return Math.max(cursor, yStart + NODE_HEIGHT + V_GAP);
       };
 
       const layoutEnd = layoutNode(tree.rootId, 0, 0);
