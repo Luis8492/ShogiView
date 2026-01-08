@@ -6,7 +6,7 @@ test("capture UI preview screenshot", async ({ page }) => {
   const artifactsDir = path.resolve("artifacts");
   await mkdir(artifactsDir, { recursive: true });
 
-  await page.goto("http://localhost:4173/preview/index.html", {
+  await page.goto("http://localhost:4173/index.html", {
     waitUntil: "networkidle",
   });
 
