@@ -514,6 +514,56 @@ export function renderKif(
     const moveListContainer = layout.createDiv({ cls: 'move-list' });
     moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
     const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+    let treeGridEl: HTMLElement | null = null;
+    let treePan = { x: 0, y: 0 };
+    let isPanning = false;
+    let panPointerId: number | null = null;
+    let panStart = { x: 0, y: 0 };
+    let panOrigin = { x: 0, y: 0 };
+    let hasManualPan = false;
+
+    const applyTreePan = () => {
+      if (!treeGridEl) return;
+      treeGridEl.style.setProperty('--variation-pan-x', `${treePan.x}px`);
+      treeGridEl.style.setProperty('--variation-pan-y', `${treePan.y}px`);
+    };
+
+    const handlePanStart = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('.variation-grid-move')) return;
+      isPanning = true;
+      panPointerId = event.pointerId;
+      panStart = { x: event.clientX, y: event.clientY };
+      panOrigin = { ...treePan };
+      moveListBody.setPointerCapture(event.pointerId);
+      moveListBody.addClass('is-panning');
+    };
+
+    const handlePanMove = (event: PointerEvent) => {
+      if (!isPanning || panPointerId !== event.pointerId) return;
+      const deltaX = event.clientX - panStart.x;
+      const deltaY = event.clientY - panStart.y;
+      if (!hasManualPan && (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2)) {
+        hasManualPan = true;
+      }
+      treePan = { x: panOrigin.x + deltaX, y: panOrigin.y + deltaY };
+      applyTreePan();
+      event.preventDefault();
+    };
+
+    const handlePanEnd = (event: PointerEvent) => {
+      if (!isPanning || panPointerId !== event.pointerId) return;
+      isPanning = false;
+      panPointerId = null;
+      moveListBody.releasePointerCapture(event.pointerId);
+      moveListBody.removeClass('is-panning');
+    };
+
+    renderChild.registerDomEvent(moveListBody, 'pointerdown', handlePanStart);
+    renderChild.registerDomEvent(moveListBody, 'pointermove', handlePanMove);
+    renderChild.registerDomEvent(moveListBody, 'pointerup', handlePanEnd);
+    renderChild.registerDomEvent(moveListBody, 'pointercancel', handlePanEnd);
 
     const commentsContainer = container.createDiv({ cls: 'comments-container' });
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
@@ -803,6 +853,7 @@ export function renderKif(
 
     function renderMoveList() {
       moveListBody.empty();
+      treeGridEl = null;
       if (!hasAnyMoves(root)) {
         moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
         requestStackedStateUpdate();
@@ -817,145 +868,145 @@ export function renderKif(
         pointer = pointer.parent?.line;
       }
 
-      const tree = moveListBody.createDiv({ cls: 'variation-tree' });
+      type LineRowInfo = {
+        line: VariationLine;
+        row: number;
+        parentRow?: number;
+        anchorColumn?: number;
+      };
 
-      const MAX_VARIATION_INDENT_CLASS_LEVEL = 20;
+      const lineRows: LineRowInfo[] = [];
+      const lineRowMap = new Map<VariationLine, LineRowInfo>();
 
-      const renderVariationLine = (
-        line: VariationLine,
-        parentEl: HTMLElement,
-        indentLevel: number,
-      ) => {
-        const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
-        const clampedIndentLevel = Math.min(indentLevel, MAX_VARIATION_INDENT_CLASS_LEVEL);
-        nodeEl.addClass(`indent-level-${clampedIndentLevel}`);
-        if (activeLines.has(line)) {
-          nodeEl.addClass('is-active-line');
-        }
-        if (line === currentLine) {
-          nodeEl.addClass('is-current-line');
-        }
-
-        const hasChildren = line.leadVariations.length > 0 || line.moves.length > 0;
-        const headerEl = nodeEl.createDiv({ cls: 'variation-header' });
-        if (hasChildren) {
-          const toggleBtn = headerEl.createEl('button', {
-            cls: 'variation-toggle',
-            text: line.isExpanded ? '▼' : '▶',
-            attr: {
-              type: 'button',
-              'aria-expanded': String(line.isExpanded),
-              'aria-label': line.isExpanded ? '変化を折りたたむ' : '変化を展開する',
-            },
-          });
-          toggleBtn.onclick = (event) => {
-            event.stopPropagation();
-            line.isExpanded = !line.isExpanded;
-            renderMoveList();
-          };
-        } else {
-          headerEl.createSpan({ cls: ['variation-toggle', 'variation-toggle-placeholder'] });
-          nodeEl.addClass('is-leaf');
-        }
-        headerEl.createSpan({ cls: 'variation-title', text: lineLabel(line) });
-
-        if (!hasChildren) {
-          return;
-        }
-        if (!line.isExpanded) {
-          nodeEl.addClass('is-collapsed');
-          return;
-        }
-
-        const childrenEl = nodeEl.createDiv({ cls: 'variation-children' });
-
+      const collectLines = (line: VariationLine) => {
+        const row = lineRows.length;
+        const info: LineRowInfo = { line, row };
+        lineRows.push(info);
+        lineRowMap.set(line, info);
         for (const lead of line.leadVariations) {
-          renderVariationLine(lead, childrenEl, indentLevel + 1);
+          collectLines(lead);
         }
+        for (const mv of line.moves) {
+          for (const variation of mv.variations) {
+            collectLines(variation);
+          }
+        }
+      };
 
+      const maxMoveNumber = (line: VariationLine): number => {
+        let max = 0;
+        for (const mv of line.moves) {
+          max = Math.max(max, mv.n);
+          for (const variation of mv.variations) {
+            max = Math.max(max, maxMoveNumber(variation));
+          }
+        }
+        for (const lead of line.leadVariations) {
+          max = Math.max(max, maxMoveNumber(lead));
+        }
+        return max;
+      };
+
+      collectLines(root);
+      for (const info of lineRows) {
+        const parentInfo = info.line.parent;
+        if (!parentInfo || parentInfo.anchorMoveCount === 0) continue;
+        const parentRowInfo = lineRowMap.get(parentInfo.line);
+        const anchorMove = parentInfo.line.moves[parentInfo.anchorMoveCount - 1];
+        const anchorColumn = anchorMove?.n;
+        if (parentRowInfo && anchorColumn) {
+          info.parentRow = parentRowInfo.row;
+          info.anchorColumn = anchorColumn;
+        }
+      }
+
+      const maxColumns = Math.max(1, maxMoveNumber(root));
+      const treeViewport = moveListBody.createDiv({ cls: 'variation-tree-viewport' });
+      const treeGrid = treeViewport.createDiv({ cls: 'variation-tree-grid' });
+      treeGridEl = treeGrid;
+      treeGrid.style.setProperty('--variation-column-count', String(maxColumns));
+      applyTreePan();
+
+      const createHorizontalConnector = (row: number, start: number, end: number) => {
+        if (end <= start) return;
+        const connector = treeGrid.createDiv({ cls: 'variation-grid-connector variation-grid-connector-horizontal' });
+        connector.style.gridRow = String(row + 1);
+        connector.style.gridColumn = `${start} / ${end + 1}`;
+      };
+
+      const createVerticalConnector = (startRow: number, endRow: number, column: number) => {
+        if (startRow === endRow) return;
+        const from = Math.min(startRow, endRow) + 1;
+        const to = Math.max(startRow, endRow) + 2;
+        const connector = treeGrid.createDiv({ cls: 'variation-grid-connector variation-grid-connector-vertical' });
+        connector.style.gridRow = `${from} / ${to}`;
+        connector.style.gridColumn = String(column);
+      };
+
+      for (const info of lineRows) {
+        if (info.parentRow !== undefined && info.anchorColumn !== undefined) {
+          createVerticalConnector(info.parentRow, info.row, info.anchorColumn);
+          const firstMove = info.line.moves[0];
+          if (firstMove && firstMove.n > info.anchorColumn) {
+            createHorizontalConnector(info.row, info.anchorColumn, firstMove.n);
+          }
+        }
+      }
+
+      for (const info of lineRows) {
+        const { line, row } = info;
         line.moves.forEach((mv, moveIndex) => {
-          const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
-          const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
+          const moveBox = treeGrid.createDiv({ cls: 'variation-grid-move' });
+          moveBox.style.gridRow = String(row + 1);
+          moveBox.style.gridColumn = String(mv.n);
           if (executedMoves.has(mv)) {
-            moveRow.addClass('is-done');
+            moveBox.addClass('is-done');
           }
           if (latestMove && latestMove === mv) {
-            moveRow.addClass('is-current');
+            moveBox.addClass('is-current');
           }
-          moveRow.onclick = () => {
+          if (activeLines.has(line)) {
+            moveBox.addClass('is-active-line');
+          }
+          moveBox.onclick = () => {
             jumpTo(line, moveIndex);
           };
-          moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
+          moveBox.createSpan({ cls: 'move-number', text: mv.n.toString() });
           const prefix = mv.n % 2 === 1 ? '▲' : '△';
           const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
-          moveRow.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-          const moveText = moveRow.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
+          moveBox.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
+          const moveText = moveBox.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
           if (mv.kind && isPromotedKind(mv.kind)) {
             moveText.addClass('move-text-promoted');
           }
-
-          const hasVariations = mv.variations.length > 0;
-          const hasActiveChild = hasVariations && mv.variations.some((variation) => activeLines.has(variation));
-          if (hasVariations) {
-            moveRow.addClass('has-branch');
-            if (hasActiveChild) {
-              moveRow.addClass('has-active-branch');
-            }
-            const branchToggle = moveRow.createEl('button', {
-              cls: 'variation-branch-toggle',
-              text: mv.areVariationsExpanded ? '▼' : '▶',
-              attr: {
-                type: 'button',
-                'aria-expanded': String(mv.areVariationsExpanded),
-                'aria-label': mv.areVariationsExpanded
-                  ? 'この手の変化を折りたたむ'
-                  : 'この手の変化を展開する',
-              },
-            });
-            branchToggle.onclick = (event) => {
-              event.stopPropagation();
-              mv.areVariationsExpanded = !mv.areVariationsExpanded;
-              renderMoveList();
-            };
-            if (mv.areVariationsExpanded) {
-              const branchList = moveGroup.createDiv({ cls: 'variation-branch' });
-              if (hasActiveChild) {
-                branchList.addClass('is-active-branch');
-              }
-              for (const variation of mv.variations) {
-                renderVariationLine(variation, branchList, indentLevel + 1);
-              }
-            }
-          } else {
-            moveRow.createSpan({ cls: 'variation-branch-placeholder' });
+          const nextMove = line.moves[moveIndex + 1];
+          if (nextMove) {
+            createHorizontalConnector(row, mv.n, nextMove.n);
           }
         });
-      };
-
-      renderVariationLine(root, tree, 0);
-      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
-      if (currentMoveEl instanceof HTMLElement) {
-        const moveRect = currentMoveEl.getBoundingClientRect();
-        const bodyRect = moveListBody.getBoundingClientRect();
-        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
-        const moveBottom = moveTop + moveRect.height;
-        const viewTop = moveListBody.scrollTop;
-        const viewBottom = viewTop + moveListBody.clientHeight;
-        const margin = 8;
-        let targetTop: number | null = null;
-        if (moveTop - margin < viewTop) {
-          targetTop = Math.max(moveTop - margin, 0);
-        } else if (moveBottom + margin > viewBottom) {
-          const maxTop = Math.max(moveListBody.scrollHeight - moveListBody.clientHeight, 0);
-          targetTop = Math.min(moveBottom + margin - moveListBody.clientHeight, maxTop);
-        }
-        if (targetTop !== null) {
-          const behavior = isPlaying ? 'smooth' : 'auto';
-          moveListBody.scrollTo({ top: targetTop, behavior });
-        }
       }
-      if (!currentMoveEl && currentMoveIdx === 0) {
-        moveListBody.scrollTop = 0;
+
+      const currentMoveEl = treeGrid.querySelector('.variation-grid-move.is-current');
+      if (currentMoveEl instanceof HTMLElement && !hasManualPan) {
+        const bodyRect = moveListBody.getBoundingClientRect();
+        const moveRect = currentMoveEl.getBoundingClientRect();
+        const margin = 24;
+        let nextX = treePan.x;
+        let nextY = treePan.y;
+        if (moveRect.left < bodyRect.left + margin) {
+          nextX += bodyRect.left + margin - moveRect.left;
+        } else if (moveRect.right > bodyRect.right - margin) {
+          nextX -= moveRect.right - (bodyRect.right - margin);
+        }
+        if (moveRect.top < bodyRect.top + margin) {
+          nextY += bodyRect.top + margin - moveRect.top;
+        } else if (moveRect.bottom > bodyRect.bottom - margin) {
+          nextY -= moveRect.bottom - (bodyRect.bottom - margin);
+        }
+        if (nextX !== treePan.x || nextY !== treePan.y) {
+          treePan = { x: nextX, y: nextY };
+          applyTreePan();
+        }
       }
       requestStackedStateUpdate();
     }
