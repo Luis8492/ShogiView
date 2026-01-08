@@ -578,19 +578,15 @@ align-self: stretch;
     fill: none;
 }
 
-// tree: MoveTree, selectedNodeId: string (現在選択中のID)
-const activePathIds = getActivePathIds(tree, selectedNodeId);
+/* 現在の手（一点のみ）を強調 */
+.shogi-kif .tree-node.is-current .tree-node-rect {
+    stroke: var(--interactive-accent-highlight); /* 明るい色 */
+    stroke-width: 3px; /* 枠線を太くする */
+    filter: drop-shadow(0 0 4px var(--interactive-accent)); /* 光らせる */
+}
 
-Object.values(tree.nodes).forEach(node => {
-    // DOM要素を取得（または生成時に判定）
-    const nodeEl = document.querySelector(`[data-node-id="${node.id}"]`);
-    if (!nodeEl) return;
-
-    // 1. 経路全体の強調（1A-2A-3B-4B...）
-    const isActive = activePathIds.has(node.id);
-    nodeEl.classList.toggle('is-active-line', isActive);
-
-    // 2. 現在の手のみの強調（4Bのみ）
-    const isCurrent = (node.id === selectedNodeId);
-    nodeEl.classList.toggle('is-current', isCurrent);
-});
+/* 文字も見やすく */
+.shogi-kif .tree-node.is-current .tree-node-text {
+    font-weight: bold;
+    fill: var(--text-on-accent);
+}
