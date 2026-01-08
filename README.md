@@ -12,8 +12,7 @@ ShogiView lets you paste shogi game records written in the KIF format into Obsid
 - Provide keyboard shortcuts to move through positions with the ←/→ and Home/End keys when the viewer or its controls are focused
 - Start or stop autoplay with the space key or toolbar button
 - Jump to and start playback from any move number
-- Support branching variations with breadcrumbs, a button to return to the parent line, and a dropdown to select variations
-- Explore variations in an SVG tree view below the board, click nodes to jump, and scroll with the mouse wheel (Shift+wheel for horizontal) to move around
+- Explore branching variations in an SVG tree view below the board, click nodes to jump, and scroll with the mouse wheel (Shift+wheel for horizontal) to move around
 - Display comments on the latest move, elapsed time, and metadata such as tournament and opening name
 
 ## Usage

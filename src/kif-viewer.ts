@@ -533,13 +533,6 @@ export function renderKif(
     });
     const startMoveFeedback = startMoveControls.createSpan({ cls: 'start-move-feedback' });
 
-    const variationBar = boardSection.createDiv({ cls: 'variation-bar' });
-    const pathLabel = variationBar.createSpan({ cls: 'variation-current' });
-    const btnParent = variationBar.createEl('button', { text: 'Return to parent line ↩' });
-    btnParent.addClass('variation-parent');
-    const variationSelect = variationBar.createEl('select');
-    variationSelect.addClass('variation-select');
-    let availableVariations: VariationLine[] = [];
 
     const AUTOPLAY_INTERVAL_MS = 1500;
     let isPlaying = false;
@@ -626,13 +619,6 @@ export function renderKif(
       if (!node) return;
       jumpTo(node.jumpRef.line, node.jumpRef.moveIndex);
     });
-
-    function lineLabel(line: VariationLine): string {
-      if (!line.parent) return '本筋';
-      const first = line.moves[0];
-      const moveText = first ? formatMoveLabel(first) : '';
-      return moveText ? `変化 ${line.startMoveNumber}手: ${moveText}` : `変化 ${line.startMoveNumber}手`;
-    }
 
     function gatherMoves(line: VariationLine, upto: number): ParsedMove[] {
       const count = Math.max(0, Math.min(upto, line.moves.length));
@@ -1118,71 +1104,9 @@ export function renderKif(
     }
 
     function updateVariationUI() {
-      const pathParts: string[] = [];
-      let node: VariationLine | undefined = currentLine;
-      while (node) {
-        pathParts.push(lineLabel(node));
-        node = node.parent?.line;
-      }
-      pathLabel.setText(`現在: ${pathParts.reverse().join(' → ')}`);
-      const parentInfo: VariationLine['parent'] = currentLine.parent;
-      btnParent.disabled = !parentInfo;
-      btnParent.toggleClass('is-hidden', !parentInfo);
-      variationSelect.empty();
-      availableVariations = [];
-      const variations: VariationLine[] = [];
-      variations.push(...currentLine.leadVariations);
-      for (const mv of currentLine.moves) {
-        variations.push(...mv.variations);
-      }
-      if (!variations.length) {
-        variationSelect.addClass('is-hidden');
-        variationSelect.value = '';
-      } else {
-        variationSelect.removeClass('is-hidden');
-        variationSelect.createEl('option', { text: '変化を選択', value: '' });
-        variations.forEach((variation, idx) => {
-          availableVariations.push(variation);
-          let label = lineLabel(variation);
-          const anchorCount = variation.parent?.anchorMoveCount ?? 0;
-          if (variation.parent?.line === currentLine && anchorCount > currentMoveIdx) {
-            label += '（未到達）';
-          }
-          variationSelect.createEl('option', { text: label, value: String(idx) });
-        });
-        variationSelect.value = '';
-      }
-
       renderMoveTree();
     }
 
-    function switchToVariation(variation: VariationLine) {
-      stopAutoplay();
-      lineState.set(currentLine, currentMoveIdx);
-      currentLine = variation;
-      const saved = lineState.get(currentLine);
-      const target =
-        saved !== undefined
-          ? Math.max(0, Math.min(saved, currentLine.moves.length))
-          : 0;
-      applyCurrent(target);
-      updateVariationUI();
-    }
-
-    function goToParent() {
-      const parentInfo = currentLine.parent;
-      if (!parentInfo) return;
-      stopAutoplay();
-      lineState.set(currentLine, currentMoveIdx);
-      currentLine = parentInfo.line;
-      const saved = lineState.get(currentLine);
-      const target =
-        saved !== undefined
-          ? Math.max(0, Math.min(saved, currentLine.moves.length))
-          : Math.min(parentInfo.anchorMoveCount, currentLine.moves.length);
-      applyCurrent(target);
-      updateVariationUI();
-    }
 
     btnFirst.onclick = () => {
       stopAutoplay();
@@ -1206,19 +1130,6 @@ export function renderKif(
     };
     btnPlayPause.onclick = () => {
       toggleAutoplay();
-    };
-    btnParent.onclick = () => {
-      goToParent();
-    };
-    variationSelect.onchange = () => {
-      const value = variationSelect.value;
-      if (!value) return;
-      const idx = parseInt(value, 10);
-      if (Number.isNaN(idx)) return;
-      const variation = availableVariations[idx];
-      if (variation) {
-        switchToVariation(variation);
-      }
     };
 
     function handleStartMoveApply() {

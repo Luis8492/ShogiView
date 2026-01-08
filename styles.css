@@ -80,14 +80,6 @@ border-color: var(--color-red);
 .shogi-kif .start-move-control.has-error .start-move-feedback {
 color: var(--color-red);
 }
-.shogi-kif .variation-bar {
-display: flex;
-flex-wrap: wrap;
-align-items: center;
-gap: 6px;
-margin-bottom: 8px;
-font-size: 0.9em;
-}
 .shogi-kif .board-layout {
 display: flex;
 flex-wrap: wrap;
@@ -415,15 +407,6 @@ color: var(--shogi-prefix-sente-color);
 }
 .shogi-kif .move-prefix-gote {
 color: var(--shogi-prefix-gote-color);
-}
-.shogi-kif .variation-current {
-font-weight: 600;
-}
-.shogi-kif .variation-select {
-min-width: 180px;
-}
-.shogi-kif .variation-parent:disabled {
-opacity: 0.5;
 }
 .shogi-kif .is-hidden {
 display: none !important;
