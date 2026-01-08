@@ -177,6 +177,8 @@ border-radius: 6px;
 background: var(--background-primary);
 overflow: auto;
 cursor: grab;
+ user-select: none;
+ touch-action: none;
 }
 .shogi-kif .tree-viewport.is-dragging {
 cursor: grabbing;
@@ -188,6 +190,7 @@ min-height: 220px;
 }
 .shogi-kif .variation-tree-svg {
 display: block;
+ user-select: none;
 }
 .shogi-kif .tree-edges {
 fill: none;
@@ -202,15 +205,16 @@ stroke-linejoin: round;
 }
 .shogi-kif .tree-node {
 cursor: pointer;
+ color: var(--text-normal);
 }
 .shogi-kif .tree-node-rect {
-fill: var(--background-secondary);
+fill: var(--background-secondary, #2b2b2b);
 stroke: var(--background-modifier-border);
 stroke-width: 1px;
 }
 .shogi-kif .tree-node-text {
 font-size: 12px;
-fill: var(--text-normal);
+fill: var(--text-normal, #e0e0e0);
 pointer-events: none;
 }
 .shogi-kif .tree-node.is-active-line .tree-node-rect {

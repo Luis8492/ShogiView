@@ -611,6 +611,8 @@ export function renderKif(
     const treeInner = treeViewport.createDiv({ cls: 'tree-inner' });
     const treeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     treeSvg.setAttribute('class', 'variation-tree-svg');
+    treeSvg.style.userSelect = 'none';
+    treeViewport.style.userSelect = 'none';
     treeInner.appendChild(treeSvg);
 
     let activeTree: MoveTree | null = null;
@@ -940,29 +942,22 @@ export function renderKif(
       const V_GAP = 24;
       const PADDING = 24;
       const positions: Record<string, { x: number; y: number; depth: number }> = {};
-      let currentY = 0;
       let maxDepth = 0;
 
-      const layoutNode = (nodeId: string, depth: number): number => {
+      const layoutNode = (nodeId: string, depth: number, yStart: number): number => {
         const node = tree.nodes[nodeId];
         maxDepth = Math.max(maxDepth, depth);
-        if (!node.childIds.length) {
-          const y = currentY;
-          positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y, depth };
-          currentY += NODE_HEIGHT + V_GAP;
-          return y;
+        positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y: yStart, depth };
+        let cursor = yStart + NODE_HEIGHT + V_GAP;
+        for (const childId of node.childIds) {
+          cursor = layoutNode(childId, depth + 1, cursor);
         }
-        const childYs = node.childIds.map((childId) => layoutNode(childId, depth + 1));
-        const minY = Math.min(...childYs);
-        const maxY = Math.max(...childYs);
-        const y = (minY + maxY) / 2;
-        positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y, depth };
-        return y;
+        return cursor;
       };
 
-      layoutNode(tree.rootId, 0);
+      const layoutEnd = layoutNode(tree.rootId, 0, 0);
 
-      const totalHeight = Math.max(currentY - V_GAP, NODE_HEIGHT);
+      const totalHeight = Math.max(layoutEnd - V_GAP, NODE_HEIGHT);
       const totalWidth = maxDepth * (NODE_WIDTH + H_GAP) + NODE_WIDTH;
       const svgWidth = totalWidth + PADDING * 2;
       const svgHeight = totalHeight + PADDING * 2;
