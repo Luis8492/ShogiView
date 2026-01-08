@@ -11,14 +11,32 @@ border-radius: 8px;
 --shogi-highlight-from-bg: rgba(var(--color-green-rgb, 106, 168, 79), 0.12);
 --shogi-cell-size: 36px;
 --shogi-cell-gap: 2px;
---tree-node-width: 140px;
---tree-node-height: 32px;
---tree-col-gap: 56px;
---tree-row-gap: 24px;
 display: flex;
 flex-direction: column;
 height: 100%;
 min-height: 0;
+overflow: auto;
+width: 100%;
+max-width: 100%;
+}
+.shogi-kif,
+.shogi-kif .tree-viewport {
+scrollbar-width: auto;
+scrollbar-color: var(--text-muted) transparent;
+}
+.shogi-kif::-webkit-scrollbar,
+.shogi-kif .tree-viewport::-webkit-scrollbar {
+width: 10px;
+height: 10px;
+}
+.shogi-kif::-webkit-scrollbar-thumb,
+.shogi-kif .tree-viewport::-webkit-scrollbar-thumb {
+background-color: var(--text-muted);
+border-radius: 999px;
+}
+.shogi-kif::-webkit-scrollbar-track,
+.shogi-kif .tree-viewport::-webkit-scrollbar-track {
+background: transparent;
 }
 .shogi-kif .viewer-root {
 display: flex;
@@ -75,10 +93,35 @@ display: flex;
 flex-wrap: wrap;
 gap: 16px;
 align-items: stretch;
+flex: 1 1 auto;
 min-height: 0;
 position: relative;
+overflow: hidden;
+flex-direction: column;
 }
 
+.shogi-kif .board-layout.is-stacked {
+flex-direction: column;
+flex-wrap: nowrap;
+}
+
+.shogi-kif .board-layout.is-stacked .board-area,
+.shogi-kif .board-layout.is-stacked .move-list {
+  width: 100%;
+}
+.shogi-kif .board-layout.is-stacked .move-list {
+  flex: 0 0 auto;
+}
+
+.shogi-kif .board-layout .board-move-splitter {
+display: none;
+}
+
+.shogi-kif .board-layout.is-stacked .board-move-splitter {
+  display: block;
+  height: 16px;
+  pointer-events: none;
+}
 .shogi-kif .board-area {
 display: flex;
 flex-direction: column;
@@ -172,80 +215,206 @@ row-gap: 6px;
  grid-area: board;
  justify-self: center;
 }
-.shogi-kif .tree-viewport {
+.shogi-kif .move-list {
+flex: 1 1 220px;
+min-width: 220px;
 display: flex;
-flex: 1 1 auto;
+flex-direction: column;
+gap: 6px;
 min-height: 0;
+}
+.shogi-kif .move-list-title {
+font-weight: 600;
+}
+.shogi-kif .move-list-body {
 border: 1px solid var(--background-modifier-border);
 border-radius: 6px;
-background: var(--background-secondary);
-overflow: auto;
- user-select: none;
- touch-action: auto;
- width: 100%;
- height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
- min-height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
- min-width: calc((var(--tree-node-width) * 3) + (var(--tree-col-gap) * 2));
+flex: 1 1 auto;
+min-height: 0;
+overflow-y: auto;
+background: var(--background-primary);
+padding: 6px;
+height: 100%;
+max-height: 320px;
 }
-.shogi-kif .tree-inner {
-position: relative;
-min-width: 100%;
-min-height: 220px;
+.shogi-kif .move-list-empty {
+padding: 8px;
+color: var(--text-muted);
 }
-.shogi-kif .variation-tree-svg {
-display: block;
- user-select: none;
+.shogi-kif .variation-tree {
+display: flex;
+flex-direction: column;
+gap: 6px;
+padding: 2px 0;
 }
-.shogi-kif .tree-edges {
-fill: none;
-stroke: var(--text-muted);
-stroke-width: 2px;
-opacity: 0.7;
+.shogi-kif .variation-node {
+--variation-indent-size: 18px;
+--indent-level: 0;
+padding-left: calc(var(--variation-indent-size) * var(--indent-level));
+border-left: 2px solid transparent;
 }
-.shogi-kif .tree-edge {
-fill: none;
-stroke: inherit;
-stroke-linecap: round;
-stroke-linejoin: round;
+.shogi-kif .variation-node.indent-level-0 { --indent-level: 0; }
+.shogi-kif .variation-node.indent-level-1 { --indent-level: 1; }
+.shogi-kif .variation-node.indent-level-2 { --indent-level: 2; }
+.shogi-kif .variation-node.indent-level-3 { --indent-level: 3; }
+.shogi-kif .variation-node.indent-level-4 { --indent-level: 4; }
+.shogi-kif .variation-node.indent-level-5 { --indent-level: 5; }
+.shogi-kif .variation-node.indent-level-6 { --indent-level: 6; }
+.shogi-kif .variation-node.indent-level-7 { --indent-level: 7; }
+.shogi-kif .variation-node.indent-level-8 { --indent-level: 8; }
+.shogi-kif .variation-node.indent-level-9 { --indent-level: 9; }
+.shogi-kif .variation-node.indent-level-10 { --indent-level: 10; }
+.shogi-kif .variation-node.indent-level-11 { --indent-level: 11; }
+.shogi-kif .variation-node.indent-level-12 { --indent-level: 12; }
+.shogi-kif .variation-node.indent-level-13 { --indent-level: 13; }
+.shogi-kif .variation-node.indent-level-14 { --indent-level: 14; }
+.shogi-kif .variation-node.indent-level-15 { --indent-level: 15; }
+.shogi-kif .variation-node.indent-level-16 { --indent-level: 16; }
+.shogi-kif .variation-node.indent-level-17 { --indent-level: 17; }
+.shogi-kif .variation-node.indent-level-18 { --indent-level: 18; }
+.shogi-kif .variation-node.indent-level-19 { --indent-level: 19; }
+.shogi-kif .variation-node.indent-level-20 { --indent-level: 20; }
+.shogi-kif .variation-node.is-active-line {
+border-left-color: var(--interactive-accent);
 }
-.shogi-kif .tree-node {
+.shogi-kif .variation-node .variation-header {
+display: flex;
+align-items: center;
+gap: 6px;
+font-weight: 600;
+color: var(--text-muted);
+}
+.shogi-kif .variation-node.is-active-line > .variation-header {
+color: var(--text-normal);
+}
+.shogi-kif .variation-node.is-current-line > .variation-header {
+color: var(--interactive-accent);
+background: var(--background-modifier-hover);
+border-radius: 4px;
+padding: 2px 4px;
+}
+.shogi-kif .variation-title {
+flex: 1 1 auto;
+}
+.shogi-kif .variation-toggle,
+.shogi-kif .variation-branch-toggle {
+width: 1.6em;
+height: 1.6em;
+border: none;
+background: transparent;
+color: var(--text-muted);
+display: flex;
+align-items: center;
+justify-content: center;
 cursor: pointer;
- color: var(--text-normal);
+border-radius: 4px;
 }
-.shogi-kif .tree-node-rect {
-fill: var(--background-primary, #2b2b2b);
-stroke: var(--background-modifier-border);
-stroke-width: 1px;
-transition: fill 0.15s ease, stroke 0.15s ease;
+.shogi-kif .variation-toggle:hover,
+.shogi-kif .variation-branch-toggle:hover {
+color: var(--interactive-accent);
+background: var(--background-modifier-hover);
 }
-.shogi-kif .tree-node-text {
-font-size: 12px;
-fill: var(--text-normal, #e0e0e0);
+.shogi-kif .variation-toggle:focus-visible,
+.shogi-kif .variation-branch-toggle:focus-visible {
+outline: 2px solid var(--interactive-accent);
+outline-offset: 1px;
+}
+.shogi-kif .variation-toggle-placeholder,
+.shogi-kif .variation-branch-placeholder {
+width: 1.6em;
+height: 1.6em;
+display: inline-flex;
+align-items: center;
+justify-content: center;
+}
+.shogi-kif .variation-node.is-leaf > .variation-header .variation-toggle {
+visibility: hidden;
 pointer-events: none;
 }
-.shogi-kif .tree-node:not(.is-current):hover .tree-node-rect {
-fill: var(--background-modifier-hover);
-stroke: var(--interactive-accent);
+.shogi-kif .variation-node.is-collapsed > .variation-children {
+display: none;
 }
-.shogi-kif .tree-node:not(.is-current):hover .tree-node-text {
-fill: var(--text-normal);
+.shogi-kif .variation-children {
+display: flex;
+flex-direction: column;
+gap: 6px;
+margin-top: 4px;
+margin-left: 6px;
+padding-left: 10px;
+border-left: 1px dashed var(--background-modifier-border);
 }
-.shogi-kif .tree-node.is-active-line .tree-node-rect {
-stroke: var(--interactive-accent);
+.shogi-kif .variation-move-group {
+display: flex;
+flex-direction: column;
+gap: 4px;
 }
-.shogi-kif .tree-node.is-done .tree-node-rect {
-fill: var(--background-primary);
+.shogi-kif .variation-move {
+display: grid;
+grid-template-columns: 3.4em 1.6em minmax(0, 1fr) 1.6em;
+align-items: center;
+gap: 4px;
+padding: 4px;
+border-radius: 4px;
+font-variant-numeric: tabular-nums;
+color: var(--text-muted);
+cursor: pointer;
 }
-.shogi-kif .tree-node.is-current .tree-node-rect {
-fill: var(--interactive-accent);
-stroke: var(--interactive-accent);
+.shogi-kif .variation-move.has-branch .variation-branch-toggle {
+visibility: visible;
 }
-.shogi-kif .tree-node.is-current .tree-node-text {
-fill: var(--text-on-accent, var(--background-primary));
+.shogi-kif .variation-branch-toggle {
+visibility: hidden;
 }
-.shogi-kif .tree-empty {
-fill: var(--text-muted);
-font-size: 14px;
+.shogi-kif .variation-move.is-done {
+color: var(--text-normal);
+}
+.shogi-kif .variation-move.is-current {
+background: var(--interactive-accent);
+color: var(--text-on-accent, var(--background-primary));
+}
+.shogi-kif .variation-move.is-current .move-number,
+.shogi-kif .variation-move.is-current .move-prefix,
+.shogi-kif .variation-move.is-current .move-text {
+color: inherit;
+}
+.shogi-kif .variation-move.has-active-branch {
+border-left: 2px solid var(--interactive-accent);
+padding-left: calc(4px + 2px);
+}
+.shogi-kif .variation-branch {
+display: flex;
+flex-direction: column;
+gap: 6px;
+margin-left: 16px;
+padding-left: 10px;
+border-left: 1px solid var(--background-modifier-border);
+}
+.shogi-kif .variation-branch.is-active-branch {
+border-left-color: var(--interactive-accent);
+}
+.shogi-kif .move-number {
+text-align: right;
+font-weight: 600;
+color: inherit;
+}
+.shogi-kif .move-prefix {
+display: inline-block;
+font-weight: 600;
+text-align: center;
+color: inherit;
+}
+.shogi-kif .move-text {
+min-width: 0;
+color: inherit;
+}
+.shogi-kif .move-text-promoted {
+color: var(--shogi-promoted-color);
+}
+.shogi-kif .move-prefix-sente {
+color: var(--shogi-prefix-sente-color);
+}
+.shogi-kif .move-prefix-gote {
+color: var(--shogi-prefix-gote-color);
 }
 .shogi-kif .variation-current {
 font-weight: 600;
@@ -348,4 +517,63 @@ align-self: stretch;
 .shogi-kif .comments-container .meta {
   align-self: stretch;
   width: 100%;
+}
+
+.tree-viewport {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    
+    overflow: auto !important; 
+    
+    position: relative;
+    display: block;
+    
+    scrollbar-gutter: scroll; 
+}
+
+.tree-inner {
+    display: block;
+    position: relative;
+}
+
+
+.variation-tree-svg {
+    display: block;
+    max-width: none;
+}
+
+/* ボックス自体の色 */
+.shogi-kif .tree-node-rect {
+    /* Obsidianの標準的な「入力欄」や「ボタン」の背景色を使う */
+    fill: var(--background-secondary-alt); 
+    stroke: var(--background-modifier-border);
+    stroke-width: 1px;
+}
+
+/* 文字の色 */
+.shogi-kif .tree-node-text {
+    /* Obsidianの標準テキスト色を強制する */
+    fill: var(--text-normal);
+    font-family: inherit;
+    font-size: 14px;
+    pointer-events: none; /* 文字がマウス反応を邪魔しないように */
+}
+
+/* アクティブな（選択されている）ノードの色を強調する */
+.shogi-kif .tree-node.is-active-line .tree-node-rect {
+    fill: var(--interactive-accent);
+    stroke: var(--interactive-accent);
+}
+
+.shogi-kif .tree-node.is-active-line .tree-node-text {
+    /* アクセントカラーの上では文字を白抜きにする（Obsidianのルールに合わせる） */
+    fill: var(--text-on-accent);
+}
+
+/* ツリーの枝（線）の色 */
+.shogi-kif .tree-edge {
+    stroke: var(--background-modifier-border);
+    stroke-width: 2px;
+    fill: none;
 }
