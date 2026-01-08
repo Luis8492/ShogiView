@@ -608,9 +608,62 @@ export function renderKif(
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
     const treeViewport = viewerRoot.createDiv({ cls: 'tree-viewport' });
-    const moveListContainer = treeViewport.createDiv({ cls: 'move-list' });
-    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
-    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+    const treeInner = treeViewport.createDiv({ cls: 'tree-inner' });
+    const treeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    treeSvg.setAttribute('class', 'variation-tree-svg');
+    treeInner.appendChild(treeSvg);
+
+    let activeTree: MoveTree | null = null;
+    let activePointerId: number | null = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragScrollLeft = 0;
+    let dragScrollTop = 0;
+
+    renderChild.registerDomEvent(treeViewport, 'pointerdown', (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-node-id]')) {
+        return;
+      }
+      activePointerId = event.pointerId;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
+      dragScrollLeft = treeViewport.scrollLeft;
+      dragScrollTop = treeViewport.scrollTop;
+      treeViewport.setPointerCapture(event.pointerId);
+      treeViewport.classList.add('is-dragging');
+      event.preventDefault();
+    });
+
+    renderChild.registerDomEvent(treeViewport, 'pointermove', (event: PointerEvent) => {
+      if (activePointerId === null || event.pointerId !== activePointerId) return;
+      const dx = event.clientX - dragStartX;
+      const dy = event.clientY - dragStartY;
+      treeViewport.scrollLeft = dragScrollLeft - dx;
+      treeViewport.scrollTop = dragScrollTop - dy;
+    });
+
+    const stopTreeDrag = (event: PointerEvent) => {
+      if (activePointerId === null || event.pointerId !== activePointerId) return;
+      treeViewport.releasePointerCapture(event.pointerId);
+      treeViewport.classList.remove('is-dragging');
+      activePointerId = null;
+    };
+
+    renderChild.registerDomEvent(treeViewport, 'pointerup', stopTreeDrag);
+    renderChild.registerDomEvent(treeViewport, 'pointercancel', stopTreeDrag);
+
+    renderChild.registerDomEvent(treeSvg, 'click', (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const nodeEl = target?.closest('[data-node-id]');
+      if (!nodeEl || !activeTree) return;
+      const nodeId = nodeEl.getAttribute('data-node-id');
+      if (!nodeId) return;
+      const node = activeTree.nodes[nodeId];
+      if (!node) return;
+      jumpTo(node.jumpRef.line, node.jumpRef.moveIndex);
+    });
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -847,13 +900,32 @@ export function renderKif(
       return false;
     }
 
-    function renderMoveList() {
-      moveListBody.empty();
+    function renderMoveTree() {
+      while (treeSvg.firstChild) {
+        treeSvg.removeChild(treeSvg.firstChild);
+      }
+
       if (!hasAnyMoves(root)) {
-        moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
+        const width = 260;
+        const height = 80;
+        treeSvg.setAttribute('width', String(width));
+        treeSvg.setAttribute('height', String(height));
+        treeInner.style.width = `${width}px`;
+        treeInner.style.height = `${height}px`;
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', String(width / 2));
+        text.setAttribute('y', String(height / 2));
+        text.setAttribute('class', 'tree-empty');
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        text.textContent = '棋譜はありません。';
+        treeSvg.appendChild(text);
+        activeTree = null;
         return;
       }
 
+      const tree = buildMoveTree(root);
+      activeTree = tree;
       const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
       const activeLines = new Set<VariationLine>();
       let pointer: VariationLine | undefined = currentLine;
@@ -862,145 +934,157 @@ export function renderKif(
         pointer = pointer.parent?.line;
       }
 
-      const tree = moveListBody.createDiv({ cls: 'variation-tree' });
+      const NODE_WIDTH = 140;
+      const NODE_HEIGHT = 32;
+      const H_GAP = 56;
+      const V_GAP = 24;
+      const PADDING = 24;
+      const positions: Record<string, { x: number; y: number; depth: number }> = {};
+      let currentY = 0;
+      let maxDepth = 0;
 
-      const MAX_VARIATION_INDENT_CLASS_LEVEL = 20;
-
-      const renderVariationLine = (
-        line: VariationLine,
-        parentEl: HTMLElement,
-        indentLevel: number,
-      ) => {
-        const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
-        const clampedIndentLevel = Math.min(indentLevel, MAX_VARIATION_INDENT_CLASS_LEVEL);
-        nodeEl.addClass(`indent-level-${clampedIndentLevel}`);
-        if (activeLines.has(line)) {
-          nodeEl.addClass('is-active-line');
+      const layoutNode = (nodeId: string, depth: number): number => {
+        const node = tree.nodes[nodeId];
+        maxDepth = Math.max(maxDepth, depth);
+        if (!node.childIds.length) {
+          const y = currentY;
+          positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y, depth };
+          currentY += NODE_HEIGHT + V_GAP;
+          return y;
         }
-        if (line === currentLine) {
-          nodeEl.addClass('is-current-line');
-        }
-
-        const hasChildren = line.leadVariations.length > 0 || line.moves.length > 0;
-        const headerEl = nodeEl.createDiv({ cls: 'variation-header' });
-        if (hasChildren) {
-          const toggleBtn = headerEl.createEl('button', {
-            cls: 'variation-toggle',
-            text: line.isExpanded ? '▼' : '▶',
-            attr: {
-              type: 'button',
-              'aria-expanded': String(line.isExpanded),
-              'aria-label': line.isExpanded ? '変化を折りたたむ' : '変化を展開する',
-            },
-          });
-          toggleBtn.onclick = (event) => {
-            event.stopPropagation();
-            line.isExpanded = !line.isExpanded;
-            renderMoveList();
-          };
-        } else {
-          headerEl.createSpan({ cls: ['variation-toggle', 'variation-toggle-placeholder'] });
-          nodeEl.addClass('is-leaf');
-        }
-        headerEl.createSpan({ cls: 'variation-title', text: lineLabel(line) });
-
-        if (!hasChildren) {
-          return;
-        }
-        if (!line.isExpanded) {
-          nodeEl.addClass('is-collapsed');
-          return;
-        }
-
-        const childrenEl = nodeEl.createDiv({ cls: 'variation-children' });
-
-        for (const lead of line.leadVariations) {
-          renderVariationLine(lead, childrenEl, indentLevel + 1);
-        }
-
-        line.moves.forEach((mv, moveIndex) => {
-          const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
-          const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
-          if (executedMoves.has(mv)) {
-            moveRow.addClass('is-done');
-          }
-          if (latestMove && latestMove === mv) {
-            moveRow.addClass('is-current');
-          }
-          moveRow.onclick = () => {
-            jumpTo(line, moveIndex);
-          };
-          moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
-          const prefix = mv.n % 2 === 1 ? '▲' : '△';
-          const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
-          moveRow.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-          const moveText = moveRow.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
-          if (mv.kind && isPromotedKind(mv.kind)) {
-            moveText.addClass('move-text-promoted');
-          }
-
-          const hasVariations = mv.variations.length > 0;
-          const hasActiveChild = hasVariations && mv.variations.some((variation) => activeLines.has(variation));
-          if (hasVariations) {
-            moveRow.addClass('has-branch');
-            if (hasActiveChild) {
-              moveRow.addClass('has-active-branch');
-            }
-            const branchToggle = moveRow.createEl('button', {
-              cls: 'variation-branch-toggle',
-              text: mv.areVariationsExpanded ? '▼' : '▶',
-              attr: {
-                type: 'button',
-                'aria-expanded': String(mv.areVariationsExpanded),
-                'aria-label': mv.areVariationsExpanded
-                  ? 'この手の変化を折りたたむ'
-                  : 'この手の変化を展開する',
-              },
-            });
-            branchToggle.onclick = (event) => {
-              event.stopPropagation();
-              mv.areVariationsExpanded = !mv.areVariationsExpanded;
-              renderMoveList();
-            };
-            if (mv.areVariationsExpanded) {
-              const branchList = moveGroup.createDiv({ cls: 'variation-branch' });
-              if (hasActiveChild) {
-                branchList.addClass('is-active-branch');
-              }
-              for (const variation of mv.variations) {
-                renderVariationLine(variation, branchList, indentLevel + 1);
-              }
-            }
-          } else {
-            moveRow.createSpan({ cls: 'variation-branch-placeholder' });
-          }
-        });
+        const childYs = node.childIds.map((childId) => layoutNode(childId, depth + 1));
+        const minY = Math.min(...childYs);
+        const maxY = Math.max(...childYs);
+        const y = (minY + maxY) / 2;
+        positions[nodeId] = { x: depth * (NODE_WIDTH + H_GAP), y, depth };
+        return y;
       };
 
-      renderVariationLine(root, tree, 0);
-      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
-      if (currentMoveEl instanceof HTMLElement) {
-        const moveRect = currentMoveEl.getBoundingClientRect();
-        const bodyRect = moveListBody.getBoundingClientRect();
-        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
-        const moveBottom = moveTop + moveRect.height;
-        const viewTop = moveListBody.scrollTop;
-        const viewBottom = viewTop + moveListBody.clientHeight;
-        const margin = 8;
-        let targetTop: number | null = null;
-        if (moveTop - margin < viewTop) {
-          targetTop = Math.max(moveTop - margin, 0);
-        } else if (moveBottom + margin > viewBottom) {
-          const maxTop = Math.max(moveListBody.scrollHeight - moveListBody.clientHeight, 0);
-          targetTop = Math.min(moveBottom + margin - moveListBody.clientHeight, maxTop);
-        }
-        if (targetTop !== null) {
-          const behavior = isPlaying ? 'smooth' : 'auto';
-          moveListBody.scrollTo({ top: targetTop, behavior });
-        }
+      layoutNode(tree.rootId, 0);
+
+      const totalHeight = Math.max(currentY - V_GAP, NODE_HEIGHT);
+      const totalWidth = maxDepth * (NODE_WIDTH + H_GAP) + NODE_WIDTH;
+      const svgWidth = totalWidth + PADDING * 2;
+      const svgHeight = totalHeight + PADDING * 2;
+      treeSvg.setAttribute('width', String(svgWidth));
+      treeSvg.setAttribute('height', String(svgHeight));
+      treeInner.style.width = `${svgWidth}px`;
+      treeInner.style.height = `${svgHeight}px`;
+
+      const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      edgeGroup.setAttribute('class', 'tree-edges');
+      edgeGroup.setAttribute('transform', `translate(${PADDING}, ${PADDING})`);
+
+      for (const node of Object.values(tree.nodes)) {
+        if (!node.parentId) continue;
+        const parentPos = positions[node.parentId];
+        const childPos = positions[node.id];
+        if (!parentPos || !childPos) continue;
+        const startX = parentPos.x + NODE_WIDTH;
+        const startY = parentPos.y + NODE_HEIGHT / 2;
+        const endX = childPos.x;
+        const endY = childPos.y + NODE_HEIGHT / 2;
+        const midX = startX + H_GAP / 2;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute(
+          'd',
+          `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`,
+        );
+        path.setAttribute('class', 'tree-edge');
+        edgeGroup.appendChild(path);
       }
-      if (!currentMoveEl && currentMoveIdx === 0) {
-        moveListBody.scrollTop = 0;
+
+      const nodeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      nodeGroup.setAttribute('class', 'tree-nodes');
+      nodeGroup.setAttribute('transform', `translate(${PADDING}, ${PADDING})`);
+
+      for (const node of Object.values(tree.nodes)) {
+        const pos = positions[node.id];
+        if (!pos) continue;
+        const isDone =
+          node.jumpRef.moveIndex >= 0 &&
+          executedMoves.has(node.jumpRef.line.moves[node.jumpRef.moveIndex]);
+        const isCurrent =
+          latestMove !== undefined &&
+          node.jumpRef.moveIndex >= 0 &&
+          node.jumpRef.line.moves[node.jumpRef.moveIndex] === latestMove;
+        const isActiveLine = activeLines.has(node.jumpRef.line);
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        group.setAttribute('class', 'tree-node');
+        if (isDone) group.classList.add('is-done');
+        if (isCurrent) group.classList.add('is-current');
+        if (isActiveLine) group.classList.add('is-active-line');
+        group.setAttribute('data-node-id', node.id);
+        group.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('class', 'tree-node-rect');
+        rect.setAttribute('width', String(NODE_WIDTH));
+        rect.setAttribute('height', String(NODE_HEIGHT));
+        rect.setAttribute('rx', '6');
+        rect.setAttribute('ry', '6');
+        group.appendChild(rect);
+
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('class', 'tree-node-text');
+        text.setAttribute('x', String(NODE_WIDTH / 2));
+        text.setAttribute('y', String(NODE_HEIGHT / 2));
+        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('dominant-baseline', 'middle');
+        const label =
+          node.ply === 0
+            ? '開始局面'
+            : `${node.ply}${node.ply % 2 === 1 ? '▲' : '△'}${node.label}`;
+        text.textContent = label;
+        group.appendChild(text);
+
+        nodeGroup.appendChild(group);
+      }
+
+      treeSvg.appendChild(edgeGroup);
+      treeSvg.appendChild(nodeGroup);
+
+      const currentNode = Object.values(tree.nodes).find((node) => {
+        if (!latestMove) return node.ply === 0 && currentMoveIdx === 0;
+        return (
+          node.jumpRef.moveIndex >= 0 &&
+          node.jumpRef.line.moves[node.jumpRef.moveIndex] === latestMove
+        );
+      });
+      if (currentNode) {
+        const pos = positions[currentNode.id];
+        if (pos) {
+          const margin = 40;
+          const viewLeft = treeViewport.scrollLeft;
+          const viewTop = treeViewport.scrollTop;
+          const viewRight = viewLeft + treeViewport.clientWidth;
+          const viewBottom = viewTop + treeViewport.clientHeight;
+          const nodeLeft = pos.x + PADDING;
+          const nodeRight = nodeLeft + NODE_WIDTH;
+          const nodeTop = pos.y + PADDING;
+          const nodeBottom = nodeTop + NODE_HEIGHT;
+          let targetLeft: number | null = null;
+          let targetTop: number | null = null;
+          if (nodeLeft - margin < viewLeft) {
+            targetLeft = Math.max(nodeLeft - margin, 0);
+          } else if (nodeRight + margin > viewRight) {
+            const maxLeft = Math.max(treeViewport.scrollWidth - treeViewport.clientWidth, 0);
+            targetLeft = Math.min(nodeRight + margin - treeViewport.clientWidth, maxLeft);
+          }
+          if (nodeTop - margin < viewTop) {
+            targetTop = Math.max(nodeTop - margin, 0);
+          } else if (nodeBottom + margin > viewBottom) {
+            const maxTop = Math.max(treeViewport.scrollHeight - treeViewport.clientHeight, 0);
+            targetTop = Math.min(nodeBottom + margin - treeViewport.clientHeight, maxTop);
+          }
+          if (targetLeft !== null || targetTop !== null) {
+            treeViewport.scrollTo({
+              left: targetLeft ?? treeViewport.scrollLeft,
+              top: targetTop ?? treeViewport.scrollTop,
+              behavior: isPlaying ? 'smooth' : 'auto',
+            });
+          }
+        }
       }
     }
 
@@ -1066,24 +1150,8 @@ export function renderKif(
     }
 
     function updateVariationUI() {
-      let node: VariationLine | undefined = currentLine;
-      while (node) {
-        node.isExpanded = true;
-        const parentInfo: VariationLine['parent'] = node.parent;
-        if (parentInfo) {
-          const anchorIndex = parentInfo.anchorMoveCount - 1;
-          if (anchorIndex >= 0) {
-            const anchorMove = parentInfo.line.moves[anchorIndex];
-            if (anchorMove) {
-              anchorMove.areVariationsExpanded = true;
-            }
-          }
-        }
-        node = parentInfo?.line;
-      }
-
       const pathParts: string[] = [];
-      node = currentLine;
+      let node: VariationLine | undefined = currentLine;
       while (node) {
         pathParts.push(lineLabel(node));
         node = node.parent?.line;
@@ -1117,7 +1185,7 @@ export function renderKif(
         variationSelect.value = '';
       }
 
-      renderMoveList();
+      renderMoveTree();
     }
 
     function switchToVariation(variation: VariationLine) {
