@@ -79,13 +79,21 @@ After building, copy the generated `main.js` and `manifest.json` (and `styles.cs
 
 ### UI Preview (standalone)
 
-If you want to check the UI in a browser without launching Obsidian, bundle the preview entry and open the HTML file.
+If you want to check the UI in a browser without launching Obsidian, use the preview scripts to bundle and serve the standalone HTML.
 
 ```bash
-npx esbuild preview/preview.ts --bundle --format=esm --outfile=preview/preview.js
+npm run ui:serve
 ```
 
-Then open `preview/index.html` in a browser. The preview uses a small mock app object and DOM helpers to render the same UI as the plugin.
+Then open `http://localhost:4173/preview/index.html` in a browser (or the URL printed in the terminal). The preview uses a small mock app object and DOM helpers to render the same UI as the plugin.
+
+### UI Screenshot (Playwright)
+
+To generate a UI screenshot, run the Playwright helper. It will start the preview server, open the page, and write the output to `artifacts/ui-preview.png` (ignored by Git).
+
+```bash
+npm run ui:screenshot
+```
 
 ## Future Roadmap
 - language
