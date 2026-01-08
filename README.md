@@ -1,7 +1,3 @@
-Below is a reorganized and simplified **README.md** with clearer structure, reduced redundancy, and consistent terminology. Content is preserved but grouped logically and phrased concisely.
-
----
-
 # ShogiView
 
 ## Overview
@@ -194,10 +190,3 @@ artifacts/ui-preview.png
 
 MIT License. See `LICENSE` for details.
 
----
-
-If you want, I can also:
-
-* Split **User / Developer** documentation into separate files
-* Add screenshots or diagrams
-* Produce a minimal README for Obsidian Community Plugin submission
