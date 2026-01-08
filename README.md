@@ -97,6 +97,25 @@ npm run ui:screenshot
 
 The screenshot is saved under `artifacts/ui-preview.png` and is ignored by Git.
 
+### UI チェック（Codex）
+
+Codex 環境で UI を確認する場合は、まずプレビューサーバーを起動してからスクリーンショットを取得する。手順は以下のとおりである。
+
+1. 別ターミナルでプレビューサーバーを起動する。
+
+   ```bash
+   npm run ui:serve
+   ```
+
+2. Codex 環境のブラウザツールを使って UI を開き、スクリーンショットを取得する。
+3. `npm run ui:screenshot` を実行して同じ画面の自動スクリーンショットを作成する。
+
+   ```bash
+   npm run ui:screenshot
+   ```
+
+スクリーンショットのファイルはリポジトリに含めない運用とする（必要に応じてローカルの確認用途でのみ利用する）。
+
 ## Future Roadmap
 - language
 
