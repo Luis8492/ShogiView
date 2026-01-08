@@ -23,6 +23,25 @@ overflow: auto;
 width: 100%;
 max-width: 100%;
 }
+.shogi-kif,
+.shogi-kif .tree-viewport {
+scrollbar-width: auto;
+scrollbar-color: var(--text-muted) transparent;
+}
+.shogi-kif::-webkit-scrollbar,
+.shogi-kif .tree-viewport::-webkit-scrollbar {
+width: 10px;
+height: 10px;
+}
+.shogi-kif::-webkit-scrollbar-thumb,
+.shogi-kif .tree-viewport::-webkit-scrollbar-thumb {
+background-color: var(--text-muted);
+border-radius: 999px;
+}
+.shogi-kif::-webkit-scrollbar-track,
+.shogi-kif .tree-viewport::-webkit-scrollbar-track {
+background: transparent;
+}
 .shogi-kif .viewer-root {
 display: flex;
 flex-direction: column;
