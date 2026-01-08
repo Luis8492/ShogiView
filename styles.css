@@ -1,29 +1,47 @@
 .shogi-kif {
-border: 1px solid var(--background-modifier-border);
-padding: 8px;
-border-radius: 8px;
---shogi-promoted-color: #c92a2a;
---shogi-prefix-sente-color: var(--color-orange, #d9480f);
---shogi-prefix-gote-color: var(--color-blue, #1d6fda);
---shogi-highlight-to-ring: rgba(var(--color-red-rgb, 204, 0, 0), 0.45);
---shogi-highlight-to-bg: rgba(var(--color-red-rgb, 204, 0, 0), 0.08);
---shogi-highlight-from-ring: rgba(var(--color-green-rgb, 106, 168, 79), 0.5);
---shogi-highlight-from-bg: rgba(var(--color-green-rgb, 106, 168, 79), 0.12);
---shogi-cell-size: 36px;
---shogi-cell-gap: 2px;
-display: flex;
-flex-direction: column;
-height: 100%;
-min-height: 0;
-overflow: hidden;
-width: 100%;
-max-width: 100%;
+    border: 1px solid var(--background-modifier-border);
+    padding: 8px;
+    border-radius: 8px;
+    --shogi-promoted-color: #c92a2a;
+    --shogi-prefix-sente-color: var(--color-orange, #d9480f);
+    --shogi-prefix-gote-color: var(--color-blue, #1d6fda);
+    --shogi-highlight-to-ring: rgba(var(--color-red-rgb, 204, 0, 0), 0.45);
+    --shogi-highlight-to-bg: rgba(var(--color-red-rgb, 204, 0, 0), 0.08);
+    --shogi-highlight-from-ring: rgba(var(--color-green-rgb, 106, 168, 79), 0.5);
+    --shogi-highlight-from-bg: rgba(var(--color-green-rgb, 106, 168, 79), 0.12);
+    --shogi-cell-size: 36px;
+    --shogi-cell-gap: 2px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
 }
-.shogi-kif,
+
 .shogi-kif .tree-viewport {
-scrollbar-width: auto;
-scrollbar-color: var(--text-muted) transparent;
+    scrollbar-width: auto;
+    scrollbar-color: var(--text-muted) transparent;
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    
+    overflow: auto !important; 
+    
+    position: relative;
+    display: block;
+    
+    scrollbar-gutter: scroll; 
+    max-height: 300px; 
+    
+    /* レイアウト維持のための設定 */
+    flex: 0 0 auto; 
+    border-top: 1px solid var(--background-modifier-border);
+    background-color: var(--background-primary-alt);
+    margin-top: 8px;
 }
+
 .shogi-kif::-webkit-scrollbar,
 .shogi-kif .tree-viewport::-webkit-scrollbar {
 width: 10px;
@@ -502,26 +520,13 @@ align-self: stretch;
   width: 100%;
 }
 
-.tree-viewport {
-    flex: 1;
-    width: 100%;
-    height: 100%;
-    
-    overflow: auto !important; 
-    
-    position: relative;
-    display: block;
-    
-    scrollbar-gutter: scroll; 
-}
-
-.tree-inner {
+.shogi-kif .tree-inner {
     display: block;
     position: relative;
 }
 
 
-.variation-tree-svg {
+.shogi-kif .variation-tree-svg {
     display: block;
     max-width: none;
 }
