@@ -44,6 +44,7 @@ ShogiView lets you paste shogi game records written in the KIF format into Obsid
 ### ツリー表示の操作
 
 - ツリーは盤面の下に表示される。
+- コメント欄は棋譜ツリーの下に表示される。
 - ノードをクリックすると対応する手数へジャンプする。
 - マウスホイールでスクロールする（横移動はShift+ホイール）。
 - 折り畳み機能は廃止した。
