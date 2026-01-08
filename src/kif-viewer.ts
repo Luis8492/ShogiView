@@ -605,13 +605,6 @@ export function renderKif(
 
     const treeViewport = viewerRoot.createDiv({ cls: 'tree-viewport' });
     const treeInner = treeViewport.createDiv({ cls: 'tree-inner' });
-    const treeSvg = treeInner.createEl('svg', {
-      cls: 'move-tree',
-      attr: {
-        role: 'img',
-        'aria-label': '棋譜ツリー',
-      },
-    });
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -672,6 +665,13 @@ export function renderKif(
       }
       return el;
     }
+
+    const treeSvg = createSvgElement('svg', {
+      class: 'move-tree',
+      role: 'img',
+      'aria-label': '棋譜ツリー',
+    });
+    treeInner.appendChild(treeSvg);
 
     function renderBoard() {
       const sharedTime = header['持ち時間'];
@@ -963,10 +963,13 @@ export function renderKif(
         nodeIndexMap.get(node.jumpRef.line)?.set(node.jumpRef.moveIndex, node.id);
       }
 
+      const lastExecutedRef =
+        executedRefs.length > 0 ? executedRefs[executedRefs.length - 1] : null;
       const currentNodeId =
-        currentMoveIdx === 0
-          ? tree.rootId
-          : nodeIndexMap.get(currentLine)?.get(currentMoveIdx - 1) ?? tree.rootId;
+        lastExecutedRef
+          ? nodeIndexMap.get(lastExecutedRef.line)?.get(lastExecutedRef.moveIndex) ??
+            tree.rootId
+          : tree.rootId;
 
       for (const node of Object.values(tree.nodes)) {
         if (!node.parentId) continue;
