@@ -16,6 +16,18 @@ flex-direction: column;
 height: 100%;
 min-height: 0;
 }
+.shogi-kif .viewer-root {
+display: flex;
+flex-direction: column;
+gap: 12px;
+flex: 1 1 auto;
+min-height: 0;
+}
+.shogi-kif .board-section {
+display: flex;
+flex-direction: column;
+gap: 8px;
+}
 .shogi-kif .toolbar {
 display: flex;
 flex-wrap: wrap;
@@ -59,33 +71,10 @@ display: flex;
 flex-wrap: wrap;
 gap: 16px;
 align-items: stretch;
-flex: 1 1 auto;
 min-height: 0;
 position: relative;
 }
 
-.shogi-kif .board-layout.is-stacked {
-flex-direction: column;
-flex-wrap: nowrap;
-}
-
-.shogi-kif .board-layout.is-stacked .board-area,
-.shogi-kif .board-layout.is-stacked .move-list {
-  width: 100%;
-}
-.shogi-kif .board-layout.is-stacked .move-list {
-  flex: 0 0 auto;
-}
-
-.shogi-kif .board-layout .board-move-splitter {
-display: none;
-}
-
-.shogi-kif .board-layout.is-stacked .board-move-splitter {
-  display: block;
-  height: 16px;
-  pointer-events: none;
-}
 .shogi-kif .board-area {
 display: flex;
 flex-direction: column;
@@ -179,9 +168,14 @@ row-gap: 6px;
  grid-area: board;
  justify-self: center;
 }
+.shogi-kif .tree-viewport {
+display: flex;
+flex-direction: column;
+gap: 6px;
+flex: 1 1 auto;
+min-height: 0;
+}
 .shogi-kif .move-list {
-flex: 1 1 220px;
-min-width: 220px;
 display: flex;
 flex-direction: column;
 gap: 6px;
@@ -198,7 +192,6 @@ min-height: 0;
 overflow-y: auto;
 background: var(--background-primary);
 padding: 6px;
-height: 100%;
 max-height: 320px;
 }
 .shogi-kif .move-list-empty {

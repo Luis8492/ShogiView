@@ -372,7 +372,9 @@ export function renderKif(
     let currentMoveIdx = 0;
     const lineState = new WeakMap<VariationLine, number>();
 
-    const toolbar = container.createDiv({ cls: 'toolbar' });
+    const viewerRoot = container.createDiv({ cls: 'viewer-root' });
+    const boardSection = viewerRoot.createDiv({ cls: 'board-section' });
+    const toolbar = boardSection.createDiv({ cls: 'toolbar' });
     const btnFirst = toolbar.createEl('button', {
       text: 'Go to start ⏮',
       attr: {
@@ -433,7 +435,7 @@ export function renderKif(
     });
     const startMoveFeedback = startMoveControls.createSpan({ cls: 'start-move-feedback' });
 
-    const variationBar = container.createDiv({ cls: 'variation-bar' });
+    const variationBar = boardSection.createDiv({ cls: 'variation-bar' });
     const pathLabel = variationBar.createSpan({ cls: 'variation-current' });
     const btnParent = variationBar.createEl('button', { text: 'Return to parent line ↩' });
     btnParent.addClass('variation-parent');
@@ -494,7 +496,7 @@ export function renderKif(
       }
     }
 
-    const layout = container.createDiv({ cls: 'board-layout' });
+    const layout = boardSection.createDiv({ cls: 'board-layout' });
     const boardArea = layout.createDiv({ cls: 'board-area' });
     const boardWrapper = boardArea.createDiv({ cls: 'board-wrapper' });
     const handOpponent = boardWrapper.createDiv({ cls: 'hands hands-opponent' });
@@ -504,67 +506,13 @@ export function renderKif(
     let boardHost: HTMLDivElement;
     const meta = boardArea.createDiv({ cls: 'meta' });
 
-    const splitter = layout.createDiv({ cls: 'board-move-splitter' });
-    splitter.setAttr('role', 'separator');
-    splitter.setAttr('aria-hidden', 'true');
-    splitter.setAttr('aria-orientation', 'horizontal');
-    splitter.setAttr('aria-label', '盤と棋譜リストの境界');
-    splitter.tabIndex = -1;
-
-    const moveListContainer = layout.createDiv({ cls: 'move-list' });
-    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
-    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
-
-    const commentsContainer = container.createDiv({ cls: 'comments-container' });
+    const commentsContainer = boardSection.createDiv({ cls: 'comments-container' });
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
-    let isStackedLayout = false;
-    let stackedUpdateQueued = false;
-
-    function performStackedStateUpdate() {
-      const layoutWidth = layout.clientWidth;
-      const boardWidth = boardWrapper.getBoundingClientRect().width;
-      const moveListStyle = window.getComputedStyle(moveListContainer);
-      const minListWidth = parseFloat(moveListStyle.minWidth || '0');
-      const layoutStyle = window.getComputedStyle(layout);
-      const gap = parseFloat(layoutStyle.columnGap || layoutStyle.gap || '0');
-      const shouldStack = layoutWidth > 0 && boardWidth > 0
-        ? layoutWidth < boardWidth + minListWidth + gap
-        : layoutWidth < minListWidth + gap;
-
-      if (shouldStack !== isStackedLayout) {
-        isStackedLayout = shouldStack;
-        layout.toggleClass('is-stacked', isStackedLayout);
-        splitter.setAttr('aria-hidden', 'true');
-        splitter.setAttr('aria-orientation', 'horizontal');
-        splitter.tabIndex = -1;
-      }
-    }
-
-    function requestStackedStateUpdate() {
-      if (stackedUpdateQueued) return;
-      stackedUpdateQueued = true;
-      window.requestAnimationFrame(() => {
-        stackedUpdateQueued = false;
-        performStackedStateUpdate();
-      });
-    }
-
-    const layoutResizeObserver = new ResizeObserver(() => {
-      requestStackedStateUpdate();
-    });
-    layoutResizeObserver.observe(layout);
-    renderChild.register(() => layoutResizeObserver.disconnect());
-    const boardAreaResizeObserver = new ResizeObserver(() => {
-      requestStackedStateUpdate();
-    });
-    boardAreaResizeObserver.observe(boardArea);
-    renderChild.register(() => boardAreaResizeObserver.disconnect());
-    renderChild.registerDomEvent(window, 'resize', () => {
-      requestStackedStateUpdate();
-    });
-
-    requestStackedStateUpdate();
+    const treeViewport = viewerRoot.createDiv({ cls: 'tree-viewport' });
+    const moveListContainer = treeViewport.createDiv({ cls: 'move-list' });
+    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
+    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -805,7 +753,6 @@ export function renderKif(
       moveListBody.empty();
       if (!hasAnyMoves(root)) {
         moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
-        requestStackedStateUpdate();
         return;
       }
 
@@ -957,7 +904,6 @@ export function renderKif(
       if (!currentMoveEl && currentMoveIdx === 0) {
         moveListBody.scrollTop = 0;
       }
-      requestStackedStateUpdate();
     }
 
     function applyCurrent(idx: number) {
