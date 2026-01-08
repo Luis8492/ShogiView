@@ -94,23 +94,24 @@ npm run ui:serve
 
 Then open `http://localhost:4173/preview/index.html` in a browser (or the URL printed in the terminal). The preview uses a small mock app object and DOM helpers to render the same UI as the plugin.
 
-### UI チェック（Codex）
+### Instant UI Check（Codex）
 
-Codex 環境で UI を確認する場合は、以下の手順でプレビューの起動とスクリーンショットの取得を行う。
+When checking the UI in the Codex environment, start the preview and take a screenshot using the following procedure.
 
-1. プレビューサーバーを起動する。
+1. Start the preview server.
 
    ```bash
    npm run ui:serve
    ```
 
-2. 別ターミナルでスクリーンショットを取得する。
+2. In a separate terminal, take a screenshot.
 
    ```bash
    npm run ui:screenshot
    ```
 
-スクリーンショットは `artifacts/ui-preview.png` に出力される。
+The screenshot is output to `artifacts/ui-preview.png`.
+
 
 ### UI Screenshot (Playwright)
 
