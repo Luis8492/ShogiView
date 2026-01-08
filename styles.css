@@ -1,3 +1,11 @@
+.shogi-kif-host {
+overflow: visible;
+max-height: none;
+padding: 0;
+border: none;
+background: none;
+}
+
 .shogi-kif {
 border: 1px solid var(--background-modifier-border);
 padding: 8px;
@@ -205,7 +213,7 @@ pointer-events: none;
 }
 
 .shogi-kif .move-tree-line {
-stroke: var(--background-modifier-border);
+stroke: var(--text-muted);
 stroke-width: 2px;
 fill: none;
 }

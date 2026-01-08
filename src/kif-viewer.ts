@@ -342,6 +342,8 @@ export function renderKif(
   ctx?: RenderContextLike,
   options?: RenderKifOptions,
 ): void {
+  el.empty();
+  el.addClass('shogi-kif-host');
   const container = el.createDiv({ cls: 'shogi-kif' });
   container.tabIndex = 0;
   container.setAttr('role', 'region');
