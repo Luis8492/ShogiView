@@ -474,7 +474,7 @@ export function renderKif(
     const boardSection = viewerRoot.createDiv({ cls: 'board-section' });
     const toolbar = boardSection.createDiv({ cls: 'toolbar' });
     const btnFirst = toolbar.createEl('button', {
-      text: 'Go to start ⏮',
+      text: 'First ⏮',
       attr: {
         type: 'button',
         'aria-label': 'Go to the first move (home)',
@@ -482,7 +482,7 @@ export function renderKif(
       },
     });
     const btnPrev = toolbar.createEl('button', {
-      text: 'Step back ◀',
+      text: 'Back ◀',
       attr: {
         type: 'button',
         'aria-label': 'Step back one move (arrrow-left)',
@@ -490,7 +490,7 @@ export function renderKif(
       },
     });
     const btnNext = toolbar.createEl('button', {
-      text: 'Step forward ▶',
+      text: 'Forward ▶',
       attr: {
         type: 'button',
         'aria-label': 'Step forward one move (arrow-right)',
@@ -498,7 +498,7 @@ export function renderKif(
       },
     });
     const btnLast = toolbar.createEl('button', {
-      text: 'Go to end ⏭',
+      text: 'Last ⏭',
       attr: {
         type: 'button',
         'aria-label': 'Go to the final move (end)',
@@ -506,11 +506,11 @@ export function renderKif(
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
-      text: 'Start autoplay ▶',
+      text: 'Autoplay ▶',
       attr: {
         type: 'button',
-        'aria-label': 'Start autoplay (space)',
-        title: 'Start autoplay (space)',
+        'aria-label': 'Autoplay (space)',
+        title: 'Autoplay (space)',
       },
     });
 
@@ -540,14 +540,14 @@ export function renderKif(
 
     function updatePlayButton() {
       if (isPlaying) {
-        btnPlayPause.setText('Pause autoplay ⏸');
-        btnPlayPause.setAttr('aria-label', 'Pause autoplay (Space)');
-        btnPlayPause.setAttr('title', 'Pause autoplay (Space)');
+        btnPlayPause.setText('Pause ⏸');
+        btnPlayPause.setAttr('aria-label', 'Pause (Space)');
+        btnPlayPause.setAttr('title', 'Pause (Space)');
         btnPlayPause.setAttr('aria-pressed', 'true');
       } else {
-        btnPlayPause.setText('Start autoplay ▶');
-        btnPlayPause.setAttr('aria-label', 'Start autoplay (Space)');
-        btnPlayPause.setAttr('title', 'Start autoplay (Space)');
+        btnPlayPause.setText('Autoplay ▶');
+        btnPlayPause.setAttr('aria-label', 'Autoplay (Space)');
+        btnPlayPause.setAttr('title', 'Autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'false');
       }
     }
