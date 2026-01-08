@@ -40,12 +40,10 @@ interface VariationLine {
   moves: ParsedMove[];
   parent?: { line: VariationLine; anchorMoveCount: number };
   leadVariations: VariationLine[];
-  isExpanded: boolean;
 }
 
 interface ParsedMove extends Move {
   variations: VariationLine[];
-  areVariationsExpanded: boolean;
 }
 
 export interface MoveJumpRef {
@@ -218,7 +216,7 @@ type Hands = Record<Side, PieceKind[]>;
 // "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
 export function parseKif(text: string): { header: Record<string,string>, root: VariationLine } {
   const header: Record<string,string> = {};
-  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true };
+  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [] };
   interface ParseContext { line: VariationLine; prevMove?: ParsedMove; }
   const rootContext: ParseContext = { line: root };
   const contextStack: ParseContext[] = [rootContext];
@@ -266,7 +264,6 @@ export function parseKif(text: string): { header: Record<string,string>, root: V
         moves: [],
         parent: { line: anchorContext.line, anchorMoveCount },
         leadVariations: [],
-        isExpanded: false,
       };
       if (anchorMove) {
         anchorMove.variations.push(variationLine);
@@ -332,7 +329,6 @@ export function parseKif(text: string): { header: Record<string,string>, root: V
         timestamp,
         rawTo: toToken || undefined,
         variations: [],
-        areVariationsExpanded: false,
       };
       ctx.line.moves.push(mv);
       ctx.prevMove = mv;
@@ -608,9 +604,14 @@ export function renderKif(
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
     const treeViewport = viewerRoot.createDiv({ cls: 'tree-viewport' });
-    const moveListContainer = treeViewport.createDiv({ cls: 'move-list' });
-    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
-    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+    const treeInner = treeViewport.createDiv({ cls: 'tree-inner' });
+    const treeSvg = treeInner.createEl('svg', {
+      cls: 'move-tree',
+      attr: {
+        role: 'img',
+        'aria-label': '棋譜ツリー',
+      },
+    });
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -631,6 +632,45 @@ export function renderKif(
       );
       const parentSeq = gatherMoves(line.parent.line, parentCount);
       return parentSeq.concat(prefix);
+    }
+
+    function gatherMoveRefs(
+      line: VariationLine,
+      upto: number,
+    ): Array<{ line: VariationLine; moveIndex: number; move: ParsedMove }> {
+      const count = Math.max(0, Math.min(upto, line.moves.length));
+      const prefix = line.moves.slice(0, count).map((mv, idx) => ({
+        line,
+        moveIndex: idx,
+        move: mv,
+      }));
+      if (!line.parent) {
+        return prefix;
+      }
+      const parentCount = Math.max(
+        0,
+        Math.min(line.parent.anchorMoveCount, line.parent.line.moves.length)
+      );
+      const parentSeq = gatherMoveRefs(line.parent.line, parentCount);
+      return parentSeq.concat(prefix);
+    }
+
+    const SVG_NS = 'http://www.w3.org/2000/svg';
+    const NODE_WIDTH = 120;
+    const NODE_HEIGHT = 28;
+    const NODE_GAP_X = 48;
+    const NODE_GAP_Y = 16;
+    const TREE_PADDING = 24;
+
+    function createSvgElement<K extends keyof SVGElementTagNameMap>(
+      tag: K,
+      attrs: Record<string, string> = {},
+    ): SVGElementTagNameMap[K] {
+      const el = document.createElementNS(SVG_NS, tag);
+      for (const [key, value] of Object.entries(attrs)) {
+        el.setAttribute(key, value);
+      }
+      return el;
     }
 
     function renderBoard() {
@@ -847,160 +887,176 @@ export function renderKif(
       return false;
     }
 
-    function renderMoveList() {
-      moveListBody.empty();
+    let latestMoveTree: MoveTree | null = null;
+
+    function renderMoveTree() {
+      while (treeSvg.firstChild) {
+        treeSvg.removeChild(treeSvg.firstChild);
+      }
+
       if (!hasAnyMoves(root)) {
-        moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
+        const width = TREE_PADDING * 2 + NODE_WIDTH;
+        const height = TREE_PADDING * 2 + NODE_HEIGHT;
+        treeSvg.setAttribute('width', String(width));
+        treeSvg.setAttribute('height', String(height));
+        treeSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        const emptyText = createSvgElement('text', {
+          x: String(TREE_PADDING),
+          y: String(TREE_PADDING + 16),
+          class: 'move-tree-empty',
+        });
+        emptyText.textContent = '棋譜はありません。';
+        treeSvg.appendChild(emptyText);
+        latestMoveTree = null;
         return;
       }
 
-      const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
-      const activeLines = new Set<VariationLine>();
-      let pointer: VariationLine | undefined = currentLine;
-      while (pointer) {
-        activeLines.add(pointer);
-        pointer = pointer.parent?.line;
-      }
+      const tree = buildMoveTree(root);
+      latestMoveTree = tree;
+      const depthMap = new Map<string, number>();
+      const order: string[] = [];
 
-      const tree = moveListBody.createDiv({ cls: 'variation-tree' });
-
-      const MAX_VARIATION_INDENT_CLASS_LEVEL = 20;
-
-      const renderVariationLine = (
-        line: VariationLine,
-        parentEl: HTMLElement,
-        indentLevel: number,
-      ) => {
-        const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
-        const clampedIndentLevel = Math.min(indentLevel, MAX_VARIATION_INDENT_CLASS_LEVEL);
-        nodeEl.addClass(`indent-level-${clampedIndentLevel}`);
-        if (activeLines.has(line)) {
-          nodeEl.addClass('is-active-line');
+      const walk = (nodeId: string, depth: number) => {
+        depthMap.set(nodeId, depth);
+        order.push(nodeId);
+        for (const childId of tree.nodes[nodeId].childIds) {
+          walk(childId, depth + 1);
         }
-        if (line === currentLine) {
-          nodeEl.addClass('is-current-line');
-        }
-
-        const hasChildren = line.leadVariations.length > 0 || line.moves.length > 0;
-        const headerEl = nodeEl.createDiv({ cls: 'variation-header' });
-        if (hasChildren) {
-          const toggleBtn = headerEl.createEl('button', {
-            cls: 'variation-toggle',
-            text: line.isExpanded ? '▼' : '▶',
-            attr: {
-              type: 'button',
-              'aria-expanded': String(line.isExpanded),
-              'aria-label': line.isExpanded ? '変化を折りたたむ' : '変化を展開する',
-            },
-          });
-          toggleBtn.onclick = (event) => {
-            event.stopPropagation();
-            line.isExpanded = !line.isExpanded;
-            renderMoveList();
-          };
-        } else {
-          headerEl.createSpan({ cls: ['variation-toggle', 'variation-toggle-placeholder'] });
-          nodeEl.addClass('is-leaf');
-        }
-        headerEl.createSpan({ cls: 'variation-title', text: lineLabel(line) });
-
-        if (!hasChildren) {
-          return;
-        }
-        if (!line.isExpanded) {
-          nodeEl.addClass('is-collapsed');
-          return;
-        }
-
-        const childrenEl = nodeEl.createDiv({ cls: 'variation-children' });
-
-        for (const lead of line.leadVariations) {
-          renderVariationLine(lead, childrenEl, indentLevel + 1);
-        }
-
-        line.moves.forEach((mv, moveIndex) => {
-          const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
-          const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
-          if (executedMoves.has(mv)) {
-            moveRow.addClass('is-done');
-          }
-          if (latestMove && latestMove === mv) {
-            moveRow.addClass('is-current');
-          }
-          moveRow.onclick = () => {
-            jumpTo(line, moveIndex);
-          };
-          moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
-          const prefix = mv.n % 2 === 1 ? '▲' : '△';
-          const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
-          moveRow.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-          const moveText = moveRow.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
-          if (mv.kind && isPromotedKind(mv.kind)) {
-            moveText.addClass('move-text-promoted');
-          }
-
-          const hasVariations = mv.variations.length > 0;
-          const hasActiveChild = hasVariations && mv.variations.some((variation) => activeLines.has(variation));
-          if (hasVariations) {
-            moveRow.addClass('has-branch');
-            if (hasActiveChild) {
-              moveRow.addClass('has-active-branch');
-            }
-            const branchToggle = moveRow.createEl('button', {
-              cls: 'variation-branch-toggle',
-              text: mv.areVariationsExpanded ? '▼' : '▶',
-              attr: {
-                type: 'button',
-                'aria-expanded': String(mv.areVariationsExpanded),
-                'aria-label': mv.areVariationsExpanded
-                  ? 'この手の変化を折りたたむ'
-                  : 'この手の変化を展開する',
-              },
-            });
-            branchToggle.onclick = (event) => {
-              event.stopPropagation();
-              mv.areVariationsExpanded = !mv.areVariationsExpanded;
-              renderMoveList();
-            };
-            if (mv.areVariationsExpanded) {
-              const branchList = moveGroup.createDiv({ cls: 'variation-branch' });
-              if (hasActiveChild) {
-                branchList.addClass('is-active-branch');
-              }
-              for (const variation of mv.variations) {
-                renderVariationLine(variation, branchList, indentLevel + 1);
-              }
-            }
-          } else {
-            moveRow.createSpan({ cls: 'variation-branch-placeholder' });
-          }
-        });
       };
+      walk(tree.rootId, 0);
 
-      renderVariationLine(root, tree, 0);
-      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
-      if (currentMoveEl instanceof HTMLElement) {
-        const moveRect = currentMoveEl.getBoundingClientRect();
-        const bodyRect = moveListBody.getBoundingClientRect();
-        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
-        const moveBottom = moveTop + moveRect.height;
-        const viewTop = moveListBody.scrollTop;
-        const viewBottom = viewTop + moveListBody.clientHeight;
-        const margin = 8;
-        let targetTop: number | null = null;
-        if (moveTop - margin < viewTop) {
-          targetTop = Math.max(moveTop - margin, 0);
-        } else if (moveBottom + margin > viewBottom) {
-          const maxTop = Math.max(moveListBody.scrollHeight - moveListBody.clientHeight, 0);
-          targetTop = Math.min(moveBottom + margin - moveListBody.clientHeight, maxTop);
+      let maxDepth = 0;
+      const positions = new Map<string, { x: number; y: number }>();
+      order.forEach((nodeId, index) => {
+        const depth = depthMap.get(nodeId) ?? 0;
+        maxDepth = Math.max(maxDepth, depth);
+        const x = TREE_PADDING + depth * (NODE_WIDTH + NODE_GAP_X);
+        const y = TREE_PADDING + index * (NODE_HEIGHT + NODE_GAP_Y);
+        positions.set(nodeId, { x, y });
+      });
+
+      const width =
+        TREE_PADDING * 2 + (maxDepth + 1) * NODE_WIDTH + maxDepth * NODE_GAP_X;
+      const height =
+        TREE_PADDING * 2 +
+        order.length * NODE_HEIGHT +
+        Math.max(0, order.length - 1) * NODE_GAP_Y;
+      treeSvg.setAttribute('width', String(width));
+      treeSvg.setAttribute('height', String(height));
+      treeSvg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+      const executedRefs = gatherMoveRefs(currentLine, currentMoveIdx);
+      const executedMap = new Map<VariationLine, Set<number>>();
+      for (const ref of executedRefs) {
+        if (!executedMap.has(ref.line)) {
+          executedMap.set(ref.line, new Set());
         }
-        if (targetTop !== null) {
-          const behavior = isPlaying ? 'smooth' : 'auto';
-          moveListBody.scrollTo({ top: targetTop, behavior });
-        }
+        executedMap.get(ref.line)?.add(ref.moveIndex);
       }
-      if (!currentMoveEl && currentMoveIdx === 0) {
-        moveListBody.scrollTop = 0;
+
+      const nodeIndexMap = new Map<VariationLine, Map<number, string>>();
+      for (const node of Object.values(tree.nodes)) {
+        if (node.jumpRef.moveIndex < 0) continue;
+        if (!nodeIndexMap.has(node.jumpRef.line)) {
+          nodeIndexMap.set(node.jumpRef.line, new Map());
+        }
+        nodeIndexMap.get(node.jumpRef.line)?.set(node.jumpRef.moveIndex, node.id);
+      }
+
+      const currentNodeId =
+        currentMoveIdx === 0
+          ? tree.rootId
+          : nodeIndexMap.get(currentLine)?.get(currentMoveIdx - 1) ?? tree.rootId;
+
+      for (const node of Object.values(tree.nodes)) {
+        if (!node.parentId) continue;
+        const parentPos = positions.get(node.parentId);
+        const childPos = positions.get(node.id);
+        if (!parentPos || !childPos) continue;
+        const parentRightX = parentPos.x + NODE_WIDTH;
+        const parentCenterY = parentPos.y + NODE_HEIGHT / 2;
+        const childLeftX = childPos.x;
+        const childCenterY = childPos.y + NODE_HEIGHT / 2;
+        const midX = parentRightX + (childLeftX - parentRightX) / 2;
+        const path = createSvgElement('path', {
+          class: 'tree-edge',
+          d: `M ${parentRightX} ${parentCenterY} H ${midX} V ${childCenterY} H ${childLeftX}`,
+        });
+        treeSvg.appendChild(path);
+      }
+
+      for (const nodeId of order) {
+        const node = tree.nodes[nodeId];
+        const pos = positions.get(nodeId);
+        if (!pos) continue;
+        const isCurrent = nodeId === currentNodeId;
+        const executedSet = executedMap.get(node.jumpRef.line);
+        const isDone = executedSet ? executedSet.has(node.jumpRef.moveIndex) : false;
+        const classes = ['move-node'];
+        if (nodeId === tree.rootId) classes.push('is-root');
+        if (isCurrent) classes.push('is-current');
+        if (isDone) classes.push('is-done');
+        const group = createSvgElement('g', {
+          class: classes.join(' '),
+          'data-node-id': nodeId,
+        });
+        const rect = createSvgElement('rect', {
+          class: 'move-node-rect',
+          x: String(pos.x),
+          y: String(pos.y),
+          width: String(NODE_WIDTH),
+          height: String(NODE_HEIGHT),
+          rx: '6',
+          ry: '6',
+          'data-node-id': nodeId,
+        });
+        const text = createSvgElement('text', {
+          class: 'move-node-text',
+          x: String(pos.x + NODE_WIDTH / 2),
+          y: String(pos.y + NODE_HEIGHT / 2),
+          'text-anchor': 'middle',
+          'dominant-baseline': 'middle',
+          'data-node-id': nodeId,
+        });
+        text.textContent = node.label;
+        group.appendChild(rect);
+        group.appendChild(text);
+        treeSvg.appendChild(group);
+      }
+
+      const currentNodeEl = treeSvg.querySelector(`[data-node-id="${currentNodeId}"]`);
+      if (currentNodeEl instanceof SVGGraphicsElement) {
+        const bbox = currentNodeEl.getBBox();
+        const margin = 24;
+        const viewLeft = treeViewport.scrollLeft;
+        const viewTop = treeViewport.scrollTop;
+        const viewRight = viewLeft + treeViewport.clientWidth;
+        const viewBottom = viewTop + treeViewport.clientHeight;
+        const nodeLeft = bbox.x;
+        const nodeRight = bbox.x + bbox.width;
+        const nodeTop = bbox.y;
+        const nodeBottom = bbox.y + bbox.height;
+        let targetLeft: number | null = null;
+        let targetTop: number | null = null;
+        if (nodeLeft - margin < viewLeft) {
+          targetLeft = Math.max(nodeLeft - margin, 0);
+        } else if (nodeRight + margin > viewRight) {
+          targetLeft = Math.max(nodeRight + margin - treeViewport.clientWidth, 0);
+        }
+        if (nodeTop - margin < viewTop) {
+          targetTop = Math.max(nodeTop - margin, 0);
+        } else if (nodeBottom + margin > viewBottom) {
+          targetTop = Math.max(nodeBottom + margin - treeViewport.clientHeight, 0);
+        }
+        if (targetLeft !== null || targetTop !== null) {
+          treeViewport.scrollTo({
+            left: targetLeft ?? treeViewport.scrollLeft,
+            top: targetTop ?? treeViewport.scrollTop,
+            behavior: isPlaying ? 'smooth' : 'auto',
+          });
+        }
+      } else if (currentMoveIdx === 0) {
+        treeViewport.scrollTo({ left: 0, top: 0, behavior: 'auto' });
       }
     }
 
@@ -1066,24 +1122,8 @@ export function renderKif(
     }
 
     function updateVariationUI() {
-      let node: VariationLine | undefined = currentLine;
-      while (node) {
-        node.isExpanded = true;
-        const parentInfo: VariationLine['parent'] = node.parent;
-        if (parentInfo) {
-          const anchorIndex = parentInfo.anchorMoveCount - 1;
-          if (anchorIndex >= 0) {
-            const anchorMove = parentInfo.line.moves[anchorIndex];
-            if (anchorMove) {
-              anchorMove.areVariationsExpanded = true;
-            }
-          }
-        }
-        node = parentInfo?.line;
-      }
-
       const pathParts: string[] = [];
-      node = currentLine;
+      let node: VariationLine | undefined = currentLine;
       while (node) {
         pathParts.push(lineLabel(node));
         node = node.parent?.line;
@@ -1117,8 +1157,56 @@ export function renderKif(
         variationSelect.value = '';
       }
 
-      renderMoveList();
+      renderMoveTree();
     }
+
+    renderChild.registerDomEvent(treeSvg, 'click', (event: MouseEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      const nodeEl = target?.closest('[data-node-id]');
+      const nodeId = nodeEl?.getAttribute('data-node-id');
+      if (!nodeId || !latestMoveTree) return;
+      const node = latestMoveTree.nodes[nodeId];
+      if (!node) return;
+      jumpTo(node.jumpRef.line, node.jumpRef.moveIndex);
+    });
+
+    let dragPointerId: number | null = null;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let dragScrollLeft = 0;
+    let dragScrollTop = 0;
+
+    renderChild.registerDomEvent(treeViewport, 'pointerdown', (event: PointerEvent) => {
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest('[data-node-id]')) {
+        return;
+      }
+      dragPointerId = event.pointerId;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
+      dragScrollLeft = treeViewport.scrollLeft;
+      dragScrollTop = treeViewport.scrollTop;
+      treeViewport.setPointerCapture(event.pointerId);
+      treeViewport.addClass('is-dragging');
+    });
+
+    renderChild.registerDomEvent(treeViewport, 'pointermove', (event: PointerEvent) => {
+      if (dragPointerId === null || event.pointerId !== dragPointerId) return;
+      const dx = event.clientX - dragStartX;
+      const dy = event.clientY - dragStartY;
+      treeViewport.scrollLeft = dragScrollLeft - dx;
+      treeViewport.scrollTop = dragScrollTop - dy;
+    });
+
+    const endTreeDrag = (event: PointerEvent) => {
+      if (dragPointerId === null || event.pointerId !== dragPointerId) return;
+      dragPointerId = null;
+      treeViewport.releasePointerCapture(event.pointerId);
+      treeViewport.removeClass('is-dragging');
+    };
+
+    renderChild.registerDomEvent(treeViewport, 'pointerup', endTreeDrag);
+    renderChild.registerDomEvent(treeViewport, 'pointercancel', endTreeDrag);
 
     function switchToVariation(variation: VariationLine) {
       stopAutoplay();

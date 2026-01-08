@@ -10,11 +10,11 @@ ShogiView lets you paste shogi game records written in the KIF format into Obsid
 - Update the board and captured pieces in real time while highlighting the previous move's origin and destination
 - Navigate the moves with **First / Back / Forward / Last** buttons
 - Provide keyboard shortcuts to move through positions with the ←/→ and Home/End keys when the viewer or its controls are focused
-- Keep the move list auto-scroll inside its panel so the board stays visible on small screens
+- Keep the move tree visible inside a scrollable diagram
 - Start or stop autoplay with the space key or toolbar button
 - Jump to and start playback from any move number
 - Support branching variations with breadcrumbs, a button to return to the parent line, and a dropdown to select variations
-- Explore variations in an expandable tree view
+- Explore variations in a tree diagram (click nodes to jump and drag the background to pan)
 - Display comments on the latest move, elapsed time, and metadata such as tournament and opening name
 
 ## Usage
@@ -40,14 +40,14 @@ ShogiView lets you paste shogi game records written in the KIF format into Obsid
    ```
    ````
 
-4. Open the note in Reading view to see the board, captured pieces, and move list. Use the controls or variation tree to replay the game. Click inside the viewer once (or focus its controls) to enable keyboard shortcuts such as ←/→, Home/End, and Space.
+4. Open the note in Reading view to see the board, captured pieces, and move tree. Use the controls or the tree diagram to replay the game. Click a node to jump, drag the background to pan, and click inside the viewer once (or focus its controls) to enable keyboard shortcuts such as ←/→, Home/End, and Space.
 
 ### About the KIF Notation
 
 - Supports common KIF headers such as `棋戦` (event) and `戦型` (opening) along with move rows.
 - Parses notation like "同", `打`, promotions (`成`), non-promotions (`不成`), original coordinates `(27)`, and elapsed time `( 0:12/00:00:12)`.
 - Associates comment lines starting with `*` to the preceding move and shows them in the comment panel.
-- Expands branches that begin with `変化：n手` into a tree so you can move to any variation.
+- Renders branches that begin with `変化：n手` inside the tree diagram so you can move to any variation.
 - You can set the initial position by adding lines like `初期表示手：15` or `start-move: 15` near the top of the code block.
 
 ## For Developers
