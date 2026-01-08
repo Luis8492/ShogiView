@@ -616,46 +616,6 @@ export function renderKif(
     treeInner.appendChild(treeSvg);
 
     let activeTree: MoveTree | null = null;
-    let activePointerId: number | null = null;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let dragScrollLeft = 0;
-    let dragScrollTop = 0;
-
-    renderChild.registerDomEvent(treeViewport, 'pointerdown', (event: PointerEvent) => {
-      if (event.button !== 0) return;
-      const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest('[data-node-id]')) {
-        return;
-      }
-      activePointerId = event.pointerId;
-      dragStartX = event.clientX;
-      dragStartY = event.clientY;
-      dragScrollLeft = treeViewport.scrollLeft;
-      dragScrollTop = treeViewport.scrollTop;
-      treeViewport.setPointerCapture(event.pointerId);
-      treeViewport.classList.add('is-dragging');
-      event.preventDefault();
-    });
-
-    renderChild.registerDomEvent(treeViewport, 'pointermove', (event: PointerEvent) => {
-      if (activePointerId === null || event.pointerId !== activePointerId) return;
-      const dx = event.clientX - dragStartX;
-      const dy = event.clientY - dragStartY;
-      treeViewport.scrollLeft = dragScrollLeft - dx;
-      treeViewport.scrollTop = dragScrollTop - dy;
-    });
-
-    const stopTreeDrag = (event: PointerEvent) => {
-      if (activePointerId === null || event.pointerId !== activePointerId) return;
-      treeViewport.releasePointerCapture(event.pointerId);
-      treeViewport.classList.remove('is-dragging');
-      activePointerId = null;
-    };
-
-    renderChild.registerDomEvent(treeViewport, 'pointerup', stopTreeDrag);
-    renderChild.registerDomEvent(treeViewport, 'pointercancel', stopTreeDrag);
-
     renderChild.registerDomEvent(treeSvg, 'click', (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : null;
       const nodeEl = target?.closest('[data-node-id]');
