@@ -604,9 +604,6 @@ export function renderKif(
     let boardHost: HTMLDivElement;
     const meta = boardArea.createDiv({ cls: 'meta' });
 
-    const commentsContainer = boardSection.createDiv({ cls: 'comments-container' });
-    const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
-
     const treeViewport = viewerRoot.createDiv({ cls: 'tree-viewport' });
     const treeInner = treeViewport.createDiv({ cls: 'tree-inner' });
     const treeSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -614,6 +611,9 @@ export function renderKif(
     treeSvg.style.userSelect = 'none';
     treeViewport.style.userSelect = 'none';
     treeInner.appendChild(treeSvg);
+
+    const commentsContainer = viewerRoot.createDiv({ cls: 'comments-container' });
+    const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
     let activeTree: MoveTree | null = null;
     renderChild.registerDomEvent(treeSvg, 'click', (event: MouseEvent) => {
