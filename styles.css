@@ -11,6 +11,10 @@ border-radius: 8px;
 --shogi-highlight-from-bg: rgba(var(--color-green-rgb, 106, 168, 79), 0.12);
 --shogi-cell-size: 36px;
 --shogi-cell-gap: 2px;
+--tree-node-width: 140px;
+--tree-node-height: 32px;
+--tree-col-gap: 56px;
+--tree-row-gap: 24px;
 display: flex;
 flex-direction: column;
 height: 100%;
@@ -174,11 +178,15 @@ flex: 1 1 auto;
 min-height: 0;
 border: 1px solid var(--background-modifier-border);
 border-radius: 6px;
-background: var(--background-primary);
+background: var(--background-secondary);
 overflow: auto;
 cursor: grab;
  user-select: none;
  touch-action: none;
+ width: 100%;
+ height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
+ min-height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
+ min-width: calc((var(--tree-node-width) * 3) + (var(--tree-col-gap) * 2));
 }
 .shogi-kif .tree-viewport.is-dragging {
 cursor: grabbing;
@@ -194,8 +202,9 @@ display: block;
 }
 .shogi-kif .tree-edges {
 fill: none;
-stroke: var(--background-modifier-border);
+stroke: var(--text-muted);
 stroke-width: 2px;
+opacity: 0.7;
 }
 .shogi-kif .tree-edge {
 fill: none;
@@ -208,14 +217,22 @@ cursor: pointer;
  color: var(--text-normal);
 }
 .shogi-kif .tree-node-rect {
-fill: var(--background-secondary, #2b2b2b);
+fill: var(--background-primary, #2b2b2b);
 stroke: var(--background-modifier-border);
 stroke-width: 1px;
+transition: fill 0.15s ease, stroke 0.15s ease;
 }
 .shogi-kif .tree-node-text {
 font-size: 12px;
 fill: var(--text-normal, #e0e0e0);
 pointer-events: none;
+}
+.shogi-kif .tree-node:not(.is-current):hover .tree-node-rect {
+fill: var(--background-modifier-hover);
+stroke: var(--interactive-accent);
+}
+.shogi-kif .tree-node:not(.is-current):hover .tree-node-text {
+fill: var(--text-normal);
 }
 .shogi-kif .tree-node.is-active-line .tree-node-rect {
 stroke: var(--interactive-accent);
