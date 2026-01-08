@@ -40,12 +40,10 @@ interface VariationLine {
   moves: ParsedMove[];
   parent?: { line: VariationLine; anchorMoveCount: number };
   leadVariations: VariationLine[];
-  isExpanded: boolean;
 }
 
 interface ParsedMove extends Move {
   variations: VariationLine[];
-  areVariationsExpanded: boolean;
 }
 
 const JP_NUM_FULL = '１２３４５６７８９';
@@ -198,7 +196,7 @@ type Hands = Record<Side, PieceKind[]>;
 // "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
 export function parseKif(text: string): { header: Record<string,string>, root: VariationLine } {
   const header: Record<string,string> = {};
-  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true };
+  const root: VariationLine = { startMoveNumber: 1, moves: [], leadVariations: [] };
   interface ParseContext { line: VariationLine; prevMove?: ParsedMove; }
   const rootContext: ParseContext = { line: root };
   const contextStack: ParseContext[] = [rootContext];
@@ -246,7 +244,6 @@ export function parseKif(text: string): { header: Record<string,string>, root: V
         moves: [],
         parent: { line: anchorContext.line, anchorMoveCount },
         leadVariations: [],
-        isExpanded: false,
       };
       if (anchorMove) {
         anchorMove.variations.push(variationLine);
@@ -312,7 +309,6 @@ export function parseKif(text: string): { header: Record<string,string>, root: V
         timestamp,
         rawTo: toToken || undefined,
         variations: [],
-        areVariationsExpanded: false,
       };
       ctx.line.moves.push(mv);
       ctx.prevMove = mv;
@@ -503,68 +499,55 @@ export function renderKif(
     const handDisplays: Record<Side, HTMLElement> = { W: handOpponent, B: handPlayer };
     let boardHost: HTMLDivElement;
     const meta = boardArea.createDiv({ cls: 'meta' });
+    const treeSection = container.createDiv({ cls: 'move-tree-section' });
+    treeSection.createDiv({ cls: 'move-tree-title', text: '棋譜ツリー' });
+    const treeViewport = treeSection.createDiv({ cls: 'move-tree-viewport' });
+    const treeCanvas = treeViewport.createDiv({ cls: 'move-tree-canvas' });
+    let isTreeDragging = false;
+    let treeDragPointerId: number | null = null;
+    let treeDragStartX = 0;
+    let treeDragStartY = 0;
+    let treeDragStartScrollLeft = 0;
+    let treeDragStartScrollTop = 0;
 
-    const splitter = layout.createDiv({ cls: 'board-move-splitter' });
-    splitter.setAttr('role', 'separator');
-    splitter.setAttr('aria-hidden', 'true');
-    splitter.setAttr('aria-orientation', 'horizontal');
-    splitter.setAttr('aria-label', '盤と棋譜リストの境界');
-    splitter.tabIndex = -1;
+    const startTreeDrag = (event: PointerEvent) => {
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (target?.closest('.move-tree-node')) return;
+      if (event.button !== 0) return;
+      isTreeDragging = true;
+      treeDragPointerId = event.pointerId;
+      treeDragStartX = event.clientX;
+      treeDragStartY = event.clientY;
+      treeDragStartScrollLeft = treeViewport.scrollLeft;
+      treeDragStartScrollTop = treeViewport.scrollTop;
+      treeViewport.addClass('is-dragging');
+      treeViewport.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    };
 
-    const moveListContainer = layout.createDiv({ cls: 'move-list' });
-    moveListContainer.createDiv({ cls: 'move-list-title', text: '棋譜' });
-    const moveListBody = moveListContainer.createDiv({ cls: 'move-list-body' });
+    const updateTreeDrag = (event: PointerEvent) => {
+      if (!isTreeDragging || treeDragPointerId !== event.pointerId) return;
+      const dx = event.clientX - treeDragStartX;
+      const dy = event.clientY - treeDragStartY;
+      treeViewport.scrollLeft = treeDragStartScrollLeft - dx;
+      treeViewport.scrollTop = treeDragStartScrollTop - dy;
+    };
+
+    const endTreeDrag = (event: PointerEvent) => {
+      if (!isTreeDragging || treeDragPointerId !== event.pointerId) return;
+      isTreeDragging = false;
+      treeDragPointerId = null;
+      treeViewport.removeClass('is-dragging');
+      treeViewport.releasePointerCapture(event.pointerId);
+    };
+
+    renderChild.registerDomEvent(treeViewport, 'pointerdown', startTreeDrag);
+    renderChild.registerDomEvent(treeViewport, 'pointermove', updateTreeDrag);
+    renderChild.registerDomEvent(treeViewport, 'pointerup', endTreeDrag);
+    renderChild.registerDomEvent(treeViewport, 'pointercancel', endTreeDrag);
 
     const commentsContainer = container.createDiv({ cls: 'comments-container' });
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
-
-    let isStackedLayout = false;
-    let stackedUpdateQueued = false;
-
-    function performStackedStateUpdate() {
-      const layoutWidth = layout.clientWidth;
-      const boardWidth = boardWrapper.getBoundingClientRect().width;
-      const moveListStyle = window.getComputedStyle(moveListContainer);
-      const minListWidth = parseFloat(moveListStyle.minWidth || '0');
-      const layoutStyle = window.getComputedStyle(layout);
-      const gap = parseFloat(layoutStyle.columnGap || layoutStyle.gap || '0');
-      const shouldStack = layoutWidth > 0 && boardWidth > 0
-        ? layoutWidth < boardWidth + minListWidth + gap
-        : layoutWidth < minListWidth + gap;
-
-      if (shouldStack !== isStackedLayout) {
-        isStackedLayout = shouldStack;
-        layout.toggleClass('is-stacked', isStackedLayout);
-        splitter.setAttr('aria-hidden', 'true');
-        splitter.setAttr('aria-orientation', 'horizontal');
-        splitter.tabIndex = -1;
-      }
-    }
-
-    function requestStackedStateUpdate() {
-      if (stackedUpdateQueued) return;
-      stackedUpdateQueued = true;
-      window.requestAnimationFrame(() => {
-        stackedUpdateQueued = false;
-        performStackedStateUpdate();
-      });
-    }
-
-    const layoutResizeObserver = new ResizeObserver(() => {
-      requestStackedStateUpdate();
-    });
-    layoutResizeObserver.observe(layout);
-    renderChild.register(() => layoutResizeObserver.disconnect());
-    const boardAreaResizeObserver = new ResizeObserver(() => {
-      requestStackedStateUpdate();
-    });
-    boardAreaResizeObserver.observe(boardArea);
-    renderChild.register(() => boardAreaResizeObserver.disconnect());
-    renderChild.registerDomEvent(window, 'resize', () => {
-      requestStackedStateUpdate();
-    });
-
-    requestStackedStateUpdate();
 
     function lineLabel(line: VariationLine): string {
       if (!line.parent) return '本筋';
@@ -801,163 +784,174 @@ export function renderKif(
       return false;
     }
 
-    function renderMoveList() {
-      moveListBody.empty();
+    function renderMoveTree() {
+      treeCanvas.empty();
       if (!hasAnyMoves(root)) {
-        moveListBody.createSpan({ cls: 'move-list-empty', text: '棋譜はありません。' });
-        requestStackedStateUpdate();
+        treeCanvas.createSpan({ cls: 'move-tree-empty', text: '棋譜はありません。' });
         return;
       }
 
-      const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
-      const activeLines = new Set<VariationLine>();
-      let pointer: VariationLine | undefined = currentLine;
-      while (pointer) {
-        activeLines.add(pointer);
-        pointer = pointer.parent?.line;
-      }
+      const TREE_NODE_WIDTH = 86;
+      const TREE_NODE_HEIGHT = 30;
+      const TREE_GAP_X = 18;
+      const TREE_GAP_Y = 18;
+      const TREE_PADDING = 12;
 
-      const tree = moveListBody.createDiv({ cls: 'variation-tree' });
+      const lineRows: VariationLine[] = [];
+      const rowByLine = new Map<VariationLine, number>();
 
-      const MAX_VARIATION_INDENT_CLASS_LEVEL = 20;
-
-      const renderVariationLine = (
-        line: VariationLine,
-        parentEl: HTMLElement,
-        indentLevel: number,
-      ) => {
-        const nodeEl = parentEl.createDiv({ cls: 'variation-node' });
-        const clampedIndentLevel = Math.min(indentLevel, MAX_VARIATION_INDENT_CLASS_LEVEL);
-        nodeEl.addClass(`indent-level-${clampedIndentLevel}`);
-        if (activeLines.has(line)) {
-          nodeEl.addClass('is-active-line');
-        }
-        if (line === currentLine) {
-          nodeEl.addClass('is-current-line');
-        }
-
-        const hasChildren = line.leadVariations.length > 0 || line.moves.length > 0;
-        const headerEl = nodeEl.createDiv({ cls: 'variation-header' });
-        if (hasChildren) {
-          const toggleBtn = headerEl.createEl('button', {
-            cls: 'variation-toggle',
-            text: line.isExpanded ? '▼' : '▶',
-            attr: {
-              type: 'button',
-              'aria-expanded': String(line.isExpanded),
-              'aria-label': line.isExpanded ? '変化を折りたたむ' : '変化を展開する',
-            },
-          });
-          toggleBtn.onclick = (event) => {
-            event.stopPropagation();
-            line.isExpanded = !line.isExpanded;
-            renderMoveList();
-          };
-        } else {
-          headerEl.createSpan({ cls: ['variation-toggle', 'variation-toggle-placeholder'] });
-          nodeEl.addClass('is-leaf');
-        }
-        headerEl.createSpan({ cls: 'variation-title', text: lineLabel(line) });
-
-        if (!hasChildren) {
-          return;
-        }
-        if (!line.isExpanded) {
-          nodeEl.addClass('is-collapsed');
-          return;
-        }
-
-        const childrenEl = nodeEl.createDiv({ cls: 'variation-children' });
-
+      const assignLineRow = (line: VariationLine) => {
+        if (rowByLine.has(line)) return;
+        const row = lineRows.length;
+        rowByLine.set(line, row);
+        lineRows.push(line);
         for (const lead of line.leadVariations) {
-          renderVariationLine(lead, childrenEl, indentLevel + 1);
+          assignLineRow(lead);
         }
-
-        line.moves.forEach((mv, moveIndex) => {
-          const moveGroup = childrenEl.createDiv({ cls: 'variation-move-group' });
-          const moveRow = moveGroup.createDiv({ cls: 'variation-move' });
-          if (executedMoves.has(mv)) {
-            moveRow.addClass('is-done');
+        for (const mv of line.moves) {
+          for (const variation of mv.variations) {
+            assignLineRow(variation);
           }
-          if (latestMove && latestMove === mv) {
-            moveRow.addClass('is-current');
-          }
-          moveRow.onclick = () => {
-            jumpTo(line, moveIndex);
-          };
-          moveRow.createSpan({ cls: 'move-number', text: mv.n.toString() });
-          const prefix = mv.n % 2 === 1 ? '▲' : '△';
-          const prefixCls = mv.n % 2 === 1 ? 'move-prefix-sente' : 'move-prefix-gote';
-          moveRow.createSpan({ cls: ['move-prefix', prefixCls], text: prefix });
-          const moveText = moveRow.createSpan({ cls: 'move-text', text: formatMoveLabel(mv) });
-          if (mv.kind && isPromotedKind(mv.kind)) {
-            moveText.addClass('move-text-promoted');
-          }
-
-          const hasVariations = mv.variations.length > 0;
-          const hasActiveChild = hasVariations && mv.variations.some((variation) => activeLines.has(variation));
-          if (hasVariations) {
-            moveRow.addClass('has-branch');
-            if (hasActiveChild) {
-              moveRow.addClass('has-active-branch');
-            }
-            const branchToggle = moveRow.createEl('button', {
-              cls: 'variation-branch-toggle',
-              text: mv.areVariationsExpanded ? '▼' : '▶',
-              attr: {
-                type: 'button',
-                'aria-expanded': String(mv.areVariationsExpanded),
-                'aria-label': mv.areVariationsExpanded
-                  ? 'この手の変化を折りたたむ'
-                  : 'この手の変化を展開する',
-              },
-            });
-            branchToggle.onclick = (event) => {
-              event.stopPropagation();
-              mv.areVariationsExpanded = !mv.areVariationsExpanded;
-              renderMoveList();
-            };
-            if (mv.areVariationsExpanded) {
-              const branchList = moveGroup.createDiv({ cls: 'variation-branch' });
-              if (hasActiveChild) {
-                branchList.addClass('is-active-branch');
-              }
-              for (const variation of mv.variations) {
-                renderVariationLine(variation, branchList, indentLevel + 1);
-              }
-            }
-          } else {
-            moveRow.createSpan({ cls: 'variation-branch-placeholder' });
-          }
-        });
+        }
       };
 
-      renderVariationLine(root, tree, 0);
-      const currentMoveEl = moveListBody.querySelector('.variation-move.is-current');
-      if (currentMoveEl instanceof HTMLElement) {
-        const moveRect = currentMoveEl.getBoundingClientRect();
-        const bodyRect = moveListBody.getBoundingClientRect();
-        const moveTop = moveRect.top - bodyRect.top + moveListBody.scrollTop;
-        const moveBottom = moveTop + moveRect.height;
-        const viewTop = moveListBody.scrollTop;
-        const viewBottom = viewTop + moveListBody.clientHeight;
-        const margin = 8;
-        let targetTop: number | null = null;
-        if (moveTop - margin < viewTop) {
-          targetTop = Math.max(moveTop - margin, 0);
-        } else if (moveBottom + margin > viewBottom) {
-          const maxTop = Math.max(moveListBody.scrollHeight - moveListBody.clientHeight, 0);
-          targetTop = Math.min(moveBottom + margin - moveListBody.clientHeight, maxTop);
-        }
-        if (targetTop !== null) {
-          const behavior = isPlaying ? 'smooth' : 'auto';
-          moveListBody.scrollTo({ top: targetTop, behavior });
+      assignLineRow(root);
+
+      type MoveNode = {
+        move: ParsedMove;
+        line: VariationLine;
+        moveIndex: number;
+        x: number;
+        y: number;
+      };
+
+      const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
+      const nodes: MoveNode[] = [];
+      const nodeByMove = new Map<ParsedMove, MoveNode>();
+      let maxMoveNumber = 0;
+
+      for (const line of lineRows) {
+        const row = rowByLine.get(line) ?? 0;
+        line.moves.forEach((mv, moveIndex) => {
+          const moveNumber = mv.n;
+          maxMoveNumber = Math.max(maxMoveNumber, moveNumber);
+          const x = (moveNumber - 1) * (TREE_NODE_WIDTH + TREE_GAP_X);
+          const y = row * (TREE_NODE_HEIGHT + TREE_GAP_Y);
+          const node: MoveNode = { move: mv, line, moveIndex, x, y };
+          nodes.push(node);
+          nodeByMove.set(mv, node);
+        });
+      }
+
+      const rowCount = Math.max(lineRows.length, 1);
+      const colCount = Math.max(maxMoveNumber, 1);
+      const contentWidth = colCount * TREE_NODE_WIDTH + Math.max(0, colCount - 1) * TREE_GAP_X;
+      const contentHeight = rowCount * TREE_NODE_HEIGHT + Math.max(0, rowCount - 1) * TREE_GAP_Y;
+      const canvasWidth = contentWidth + TREE_PADDING * 2;
+      const canvasHeight = contentHeight + TREE_PADDING * 2;
+
+      treeCanvas.style.width = `${canvasWidth}px`;
+      treeCanvas.style.height = `${canvasHeight}px`;
+
+      const svgNs = 'http://www.w3.org/2000/svg';
+      const svg = document.createElementNS(svgNs, 'svg');
+      svg.classList.add('move-tree-lines');
+      svg.setAttribute('width', String(canvasWidth));
+      svg.setAttribute('height', String(canvasHeight));
+      svg.setAttribute('viewBox', `0 0 ${canvasWidth} ${canvasHeight}`);
+      treeCanvas.appendChild(svg);
+
+      const addLine = (x1: number, y1: number, x2: number, y2: number) => {
+        const line = document.createElementNS(svgNs, 'line');
+        line.setAttribute('x1', x1.toString());
+        line.setAttribute('y1', y1.toString());
+        line.setAttribute('x2', x2.toString());
+        line.setAttribute('y2', y2.toString());
+        line.classList.add('move-tree-line');
+        svg.appendChild(line);
+      };
+
+      const addPath = (points: Array<[number, number]>) => {
+        if (points.length < 2) return;
+        const path = document.createElementNS(svgNs, 'path');
+        const [first, ...rest] = points;
+        const d = [`M ${first[0]} ${first[1]}`, ...rest.map(([x, y]) => `L ${x} ${y}`)].join(' ');
+        path.setAttribute('d', d);
+        path.classList.add('move-tree-line');
+        svg.appendChild(path);
+      };
+
+      const nodeCenter = (node: MoveNode) => ({
+        x: node.x + TREE_NODE_WIDTH / 2 + TREE_PADDING,
+        y: node.y + TREE_NODE_HEIGHT / 2 + TREE_PADDING,
+      });
+
+      for (const line of lineRows) {
+        const moves = line.moves;
+        for (let i = 0; i < moves.length - 1; i++) {
+          const startNode = nodeByMove.get(moves[i]);
+          const endNode = nodeByMove.get(moves[i + 1]);
+          if (!startNode || !endNode) continue;
+          const start = nodeCenter(startNode);
+          const end = nodeCenter(endNode);
+          addLine(start.x, start.y, end.x, end.y);
         }
       }
-      if (!currentMoveEl && currentMoveIdx === 0) {
-        moveListBody.scrollTop = 0;
+
+      for (const line of lineRows) {
+        const parentInfo = line.parent;
+        if (!parentInfo || line.moves.length === 0) continue;
+        const childFirst = nodeByMove.get(line.moves[0]);
+        if (!childFirst) continue;
+        const parentLine = parentInfo.line;
+        const parentMove =
+          parentLine.moves.find((mv) => mv.n === line.startMoveNumber)
+          ?? (parentInfo.anchorMoveCount > 0 ? parentLine.moves[parentInfo.anchorMoveCount - 1] : undefined);
+        if (!parentMove) continue;
+        const parentNode = nodeByMove.get(parentMove);
+        if (!parentNode) continue;
+        const start = nodeCenter(parentNode);
+        const end = nodeCenter(childFirst);
+        if (start.x === end.x || start.y === end.y) {
+          addLine(start.x, start.y, end.x, end.y);
+        } else {
+          addPath([
+            [start.x, start.y],
+            [end.x, start.y],
+            [end.x, end.y],
+          ]);
+        }
       }
-      requestStackedStateUpdate();
+
+      for (const node of nodes) {
+        const moveLabel = formatMoveLabel(node.move);
+        const moveEl = treeCanvas.createEl('button', {
+          cls: 'move-tree-node',
+          text: moveLabel,
+          attr: {
+            type: 'button',
+            'aria-label': `${node.move.n}手 ${moveLabel}`,
+            title: `${node.move.n}手 ${moveLabel}`,
+          },
+        });
+        moveEl.style.left = `${node.x + TREE_PADDING}px`;
+        moveEl.style.top = `${node.y + TREE_PADDING}px`;
+        if (executedMoves.has(node.move)) {
+          moveEl.addClass('is-done');
+        }
+        if (latestMove && latestMove === node.move) {
+          moveEl.addClass('is-current');
+        }
+        if (node.line === currentLine) {
+          moveEl.addClass('is-current-line');
+        }
+        if (node.move.kind && isPromotedKind(node.move.kind)) {
+          moveEl.addClass('is-promoted');
+        }
+        moveEl.onclick = () => {
+          jumpTo(node.line, node.moveIndex);
+        };
+      }
     }
 
     function applyCurrent(idx: number) {
@@ -1023,21 +1017,6 @@ export function renderKif(
 
     function updateVariationUI() {
       let node: VariationLine | undefined = currentLine;
-      while (node) {
-        node.isExpanded = true;
-        const parentInfo: VariationLine['parent'] = node.parent;
-        if (parentInfo) {
-          const anchorIndex = parentInfo.anchorMoveCount - 1;
-          if (anchorIndex >= 0) {
-            const anchorMove = parentInfo.line.moves[anchorIndex];
-            if (anchorMove) {
-              anchorMove.areVariationsExpanded = true;
-            }
-          }
-        }
-        node = parentInfo?.line;
-      }
-
       const pathParts: string[] = [];
       node = currentLine;
       while (node) {
@@ -1073,7 +1052,7 @@ export function renderKif(
         variationSelect.value = '';
       }
 
-      renderMoveList();
+      renderMoveTree();
     }
 
     function switchToVariation(variation: VariationLine) {
