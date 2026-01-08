@@ -889,11 +889,15 @@ export function renderKif(
       const tree = buildMoveTree(root);
       activeTree = tree;
       const executedMoves = new Set(gatherMoves(currentLine, currentMoveIdx));
-      const activeLines = new Set<VariationLine>();
+      const activeLineRanges = new Map<VariationLine, number | null>();
       let pointer: VariationLine | undefined = currentLine;
+      let limit: number | null = null;
       while (pointer) {
-        activeLines.add(pointer);
-        pointer = pointer.parent?.line;
+        activeLineRanges.set(pointer, limit);
+        const parentLink: VariationLine['parent'] = pointer.parent;
+        if (!parentLink) break;
+        limit = Math.max(parentLink.anchorMoveCount - 1, -1);
+        pointer = parentLink.line;
       }
 
       const NODE_WIDTH = 140;
@@ -967,7 +971,12 @@ export function renderKif(
           latestMove !== undefined &&
           node.jumpRef.moveIndex >= 0 &&
           node.jumpRef.line.moves[node.jumpRef.moveIndex] === latestMove;
-        const isActiveLine = activeLines.has(node.jumpRef.line);
+        const activeLimit = activeLineRanges.get(node.jumpRef.line);
+        const isActiveLine =
+          activeLimit !== undefined &&
+          (node.jumpRef.moveIndex < 0 ||
+            activeLimit === null ||
+            node.jumpRef.moveIndex <= activeLimit);
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         group.setAttribute('class', 'tree-node');
         if (isDone) group.classList.add('is-done');
