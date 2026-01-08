@@ -1,3 +1,6 @@
+# Dev note
+- test build `npm run build` before making PR.
+
 # Obsidian community plugin
 
 ## Project overview
