@@ -180,16 +180,12 @@ border: 1px solid var(--background-modifier-border);
 border-radius: 6px;
 background: var(--background-secondary);
 overflow: auto;
-cursor: grab;
  user-select: none;
- touch-action: none;
+ touch-action: auto;
  width: 100%;
  height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
  min-height: calc((var(--tree-node-height) * 3) + (var(--tree-row-gap) * 2));
  min-width: calc((var(--tree-node-width) * 3) + (var(--tree-col-gap) * 2));
-}
-.shogi-kif .tree-viewport.is-dragging {
-cursor: grabbing;
 }
 .shogi-kif .tree-inner {
 position: relative;
