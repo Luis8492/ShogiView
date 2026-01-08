@@ -577,3 +577,20 @@ align-self: stretch;
     stroke-width: 2px;
     fill: none;
 }
+
+// tree: MoveTree, selectedNodeId: string (現在選択中のID)
+const activePathIds = getActivePathIds(tree, selectedNodeId);
+
+Object.values(tree.nodes).forEach(node => {
+    // DOM要素を取得（または生成時に判定）
+    const nodeEl = document.querySelector(`[data-node-id="${node.id}"]`);
+    if (!nodeEl) return;
+
+    // 1. 経路全体の強調（1A-2A-3B-4B...）
+    const isActive = activePathIds.has(node.id);
+    nodeEl.classList.toggle('is-active-line', isActive);
+
+    // 2. 現在の手のみの強調（4Bのみ）
+    const isCurrent = (node.id === selectedNodeId);
+    nodeEl.classList.toggle('is-current', isCurrent);
+});
