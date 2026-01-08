@@ -48,6 +48,26 @@ interface ParsedMove extends Move {
   areVariationsExpanded: boolean;
 }
 
+export interface MoveJumpRef {
+  line: VariationLine;
+  moveIndex: number;
+  moveNumber: number;
+}
+
+export interface MoveNode {
+  id: string;
+  label: string;
+  ply: number;
+  parentId: string | null;
+  childIds: string[];
+  jumpRef: MoveJumpRef;
+}
+
+export interface MoveTree {
+  rootId: string;
+  nodes: Record<string, MoveNode>;
+}
+
 const JP_NUM_FULL = '１２３４５６７８９';
 const JP_NUM_KANJI = '一二三四五六七八九';
 const BOARD_FILE_LABELS = Array.from(JP_NUM_FULL).reverse();
@@ -338,6 +358,84 @@ function formatMoveLabel(mv: Move): string {
   const dropText = mv.drop ? '打' : '';
   const fromText = !mv.drop && mv.from ? `(${mv.from.f}${mv.from.r})` : '';
   return `${squareText}${kindText}${dropText}${fromText}`;
+}
+
+export function buildMoveTree(root: VariationLine): MoveTree {
+  const nodes: Record<string, MoveNode> = {};
+  let counter = 0;
+
+  const createNode = (node: Omit<MoveNode, 'id'>): string => {
+    const id = `move-node-${counter++}`;
+    nodes[id] = { ...node, id };
+    return id;
+  };
+
+  const buildLineNodes = (line: VariationLine, parentId: string): string | null => {
+    const moveNodeIds = line.moves.map((mv, idx) => {
+      const id = createNode({
+        label: formatMoveLabel(mv),
+        ply: mv.n,
+        parentId: idx === 0 ? parentId : null,
+        childIds: [],
+        jumpRef: {
+          line,
+          moveIndex: idx,
+          moveNumber: mv.n,
+        },
+      });
+      return id;
+    });
+
+    for (let i = 0; i < moveNodeIds.length; i++) {
+      const nodeId = moveNodeIds[i];
+      if (i === 0) {
+        nodes[nodeId].parentId = parentId;
+      } else {
+        const parentMoveId = moveNodeIds[i - 1];
+        nodes[nodeId].parentId = parentMoveId;
+        nodes[parentMoveId].childIds.push(nodeId);
+      }
+    }
+
+    for (let i = 0; i < line.moves.length; i++) {
+      const mv = line.moves[i];
+      const nodeId = moveNodeIds[i];
+      for (const variation of mv.variations) {
+        const variationRoot = buildLineNodes(variation, nodeId);
+        if (variationRoot) {
+          nodes[nodeId].childIds.push(variationRoot);
+        }
+      }
+    }
+
+    for (const leadVariation of line.leadVariations) {
+      const variationRoot = buildLineNodes(leadVariation, parentId);
+      if (variationRoot) {
+        nodes[parentId].childIds.push(variationRoot);
+      }
+    }
+
+    return moveNodeIds[0] ?? null;
+  };
+
+  const rootId = createNode({
+    label: '開始局面',
+    ply: 0,
+    parentId: null,
+    childIds: [],
+    jumpRef: {
+      line: root,
+      moveIndex: -1,
+      moveNumber: 0,
+    },
+  });
+
+  const mainRoot = buildLineNodes(root, rootId);
+  if (mainRoot) {
+    nodes[rootId].childIds.push(mainRoot);
+  }
+
+  return { rootId, nodes };
 }
 
 export function renderKif(
