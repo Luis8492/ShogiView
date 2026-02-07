@@ -70,6 +70,38 @@ export interface MoveTree {
   nodes: Record<string, MoveNode>;
 }
 
+type ControlButtonKind = 'first' | 'prev' | 'next' | 'last' | 'playPause';
+
+function resolveControlButtonLabelMode(mode?: ControlButtonLabelMode): ControlButtonLabelMode {
+  return mode === 'icon-only' ? 'icon-only' : 'text-with-icon';
+}
+
+function getControlButtonText(
+  mode: ControlButtonLabelMode,
+  kind: ControlButtonKind,
+  isPlaying = false,
+): string {
+  if (mode === 'icon-only') {
+    if (kind === 'playPause') return isPlaying ? '⏸' : '▶';
+    switch (kind) {
+      case 'first': return '⏮';
+      case 'prev': return '◀';
+      case 'next': return '▶';
+      case 'last': return '⏭';
+      default: return '';
+    }
+  }
+
+  if (kind === 'playPause') return isPlaying ? 'Pause ⏸' : 'Autoplay ▶';
+  switch (kind) {
+    case 'first': return 'First ⏮';
+    case 'prev': return 'Back ◀';
+    case 'next': return 'Forward ▶';
+    case 'last': return 'Last ⏭';
+    default: return '';
+  }
+}
+
 const JP_NUM_FULL = '１２３４５６７８９';
 const JP_NUM_KANJI = '一二三四五六七八九';
 const BOARD_FILE_LABELS = Array.from(JP_NUM_FULL).reverse();
@@ -475,10 +507,9 @@ export function renderKif(
     const viewerRoot = container.createDiv({ cls: 'viewer-root' });
     const boardSection = viewerRoot.createDiv({ cls: 'board-section' });
     const toolbar = boardSection.createDiv({ cls: 'toolbar' });
-    const controlButtonLabelMode = options?.controlButtonLabelMode ?? 'text-with-icon';
-    const useIconOnlyButtons = controlButtonLabelMode === 'icon-only';
+    const controlButtonLabelMode = resolveControlButtonLabelMode(options?.controlButtonLabelMode);
     const btnFirst = toolbar.createEl('button', {
-      text: useIconOnlyButtons ? '⏮' : 'First ⏮',
+      text: getControlButtonText(controlButtonLabelMode, 'first'),
       attr: {
         type: 'button',
         'aria-label': 'Go to the first move (home)',
@@ -486,7 +517,7 @@ export function renderKif(
       },
     });
     const btnPrev = toolbar.createEl('button', {
-      text: useIconOnlyButtons ? '◀' : 'Back ◀',
+      text: getControlButtonText(controlButtonLabelMode, 'prev'),
       attr: {
         type: 'button',
         'aria-label': 'Step back one move (arrrow-left)',
@@ -494,7 +525,7 @@ export function renderKif(
       },
     });
     const btnNext = toolbar.createEl('button', {
-      text: useIconOnlyButtons ? '▶' : 'Forward ▶',
+      text: getControlButtonText(controlButtonLabelMode, 'next'),
       attr: {
         type: 'button',
         'aria-label': 'Step forward one move (arrow-right)',
@@ -502,7 +533,7 @@ export function renderKif(
       },
     });
     const btnLast = toolbar.createEl('button', {
-      text: useIconOnlyButtons ? '⏭' : 'Last ⏭',
+      text: getControlButtonText(controlButtonLabelMode, 'last'),
       attr: {
         type: 'button',
         'aria-label': 'Go to the final move (end)',
@@ -510,7 +541,7 @@ export function renderKif(
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
-      text: useIconOnlyButtons ? '▶' : 'Autoplay ▶',
+      text: getControlButtonText(controlButtonLabelMode, 'playPause'),
       attr: {
         type: 'button',
         'aria-label': 'Autoplay (space)',
@@ -543,13 +574,12 @@ export function renderKif(
     let autoPlayIntervalId: number | null = null;
 
     function updatePlayButton() {
+      btnPlayPause.setText(getControlButtonText(controlButtonLabelMode, 'playPause', isPlaying));
       if (isPlaying) {
-        btnPlayPause.setText(useIconOnlyButtons ? '⏸' : 'Pause ⏸');
         btnPlayPause.setAttr('aria-label', 'Pause (Space)');
         btnPlayPause.setAttr('title', 'Pause (Space)');
         btnPlayPause.setAttr('aria-pressed', 'true');
       } else {
-        btnPlayPause.setText(useIconOnlyButtons ? '▶' : 'Autoplay ▶');
         btnPlayPause.setAttr('aria-label', 'Autoplay (Space)');
         btnPlayPause.setAttr('title', 'Autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'false');
