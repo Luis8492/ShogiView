@@ -103,7 +103,11 @@ You can change how the viewer control button labels are displayed:
 2. Select **ShogiView**.
 3. In **Control button labels**, choose one of:
    * **文字 + アイコン** (`text-with-icon`)
+     * `First ⏮` / `Back ◀` / `Forward ▶` / `Last ⏭`
+     * `Autoplay ▶` (stopped) / `Pause ⏸` (playing)
    * **アイコンのみ** (`icon-only`)
+     * `⏮` / `◀` / `▶` / `⏭`
+     * `▶` (stopped) / `⏸` (playing)
 
 ---
 
