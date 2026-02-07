@@ -95,6 +95,16 @@ Open the note in **Reading View** to display the board and variation tree.
 
 Click inside the viewer (or its controls) once to enable keyboard shortcuts.
 
+### Settings
+
+You can change how the viewer control button labels are displayed:
+
+1. Open **Settings → Community plugins**.
+2. Select **ShogiView**.
+3. In **Control button labels**, choose one of:
+   * **文字 + アイコン** (`text-with-icon`)
+   * **アイコンのみ** (`icon-only`)
+
 ---
 
 ## KIF Support Details
@@ -190,4 +200,3 @@ artifacts/ui-preview.png
 ## License
 
 MIT License. See `LICENSE` for details.
-

@@ -2,6 +2,7 @@ import { MarkdownPostProcessorContext, MarkdownRenderChild, Plugin } from 'obsid
 
 import { renderKif } from './src/kif-viewer';
 import { DEFAULT_SETTINGS, ShogiViewSettings } from './src/settings';
+import { ShogiViewSettingTab } from './src/settings-tab';
 
 class ShogiKifRenderChild extends MarkdownRenderChild {
   constructor(containerEl: HTMLElement) {
@@ -14,6 +15,7 @@ export default class ShogiKifViewer extends Plugin {
 
   override async onload(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.addSettingTab(new ShogiViewSettingTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
   }
 
