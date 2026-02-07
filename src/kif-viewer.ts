@@ -1,3 +1,4 @@
+import type { ControlButtonLabelMode } from './settings';
 // --- Types & helpers ---
 export interface RenderChildLike {
   registerInterval(id: number): void;
@@ -16,6 +17,7 @@ export interface RenderContextLike {
 
 export interface RenderKifOptions {
   createRenderChild?: (container: HTMLElement) => RenderChildLike;
+  controlButtonLabelMode?: ControlButtonLabelMode;
 }
 type Side = 'B' | 'W'; // B=先手, W=後手
 
@@ -473,8 +475,10 @@ export function renderKif(
     const viewerRoot = container.createDiv({ cls: 'viewer-root' });
     const boardSection = viewerRoot.createDiv({ cls: 'board-section' });
     const toolbar = boardSection.createDiv({ cls: 'toolbar' });
+    const controlButtonLabelMode = options?.controlButtonLabelMode ?? 'text-with-icon';
+    const useIconOnlyButtons = controlButtonLabelMode === 'icon-only';
     const btnFirst = toolbar.createEl('button', {
-      text: 'First ⏮',
+      text: useIconOnlyButtons ? '⏮' : 'First ⏮',
       attr: {
         type: 'button',
         'aria-label': 'Go to the first move (home)',
@@ -482,7 +486,7 @@ export function renderKif(
       },
     });
     const btnPrev = toolbar.createEl('button', {
-      text: 'Back ◀',
+      text: useIconOnlyButtons ? '◀' : 'Back ◀',
       attr: {
         type: 'button',
         'aria-label': 'Step back one move (arrrow-left)',
@@ -490,7 +494,7 @@ export function renderKif(
       },
     });
     const btnNext = toolbar.createEl('button', {
-      text: 'Forward ▶',
+      text: useIconOnlyButtons ? '▶' : 'Forward ▶',
       attr: {
         type: 'button',
         'aria-label': 'Step forward one move (arrow-right)',
@@ -498,7 +502,7 @@ export function renderKif(
       },
     });
     const btnLast = toolbar.createEl('button', {
-      text: 'Last ⏭',
+      text: useIconOnlyButtons ? '⏭' : 'Last ⏭',
       attr: {
         type: 'button',
         'aria-label': 'Go to the final move (end)',
@@ -506,7 +510,7 @@ export function renderKif(
       },
     });
     const btnPlayPause = toolbar.createEl('button', {
-      text: 'Autoplay ▶',
+      text: useIconOnlyButtons ? '▶' : 'Autoplay ▶',
       attr: {
         type: 'button',
         'aria-label': 'Autoplay (space)',
@@ -540,12 +544,12 @@ export function renderKif(
 
     function updatePlayButton() {
       if (isPlaying) {
-        btnPlayPause.setText('Pause ⏸');
+        btnPlayPause.setText(useIconOnlyButtons ? '⏸' : 'Pause ⏸');
         btnPlayPause.setAttr('aria-label', 'Pause (Space)');
         btnPlayPause.setAttr('title', 'Pause (Space)');
         btnPlayPause.setAttr('aria-pressed', 'true');
       } else {
-        btnPlayPause.setText('Autoplay ▶');
+        btnPlayPause.setText(useIconOnlyButtons ? '▶' : 'Autoplay ▶');
         btnPlayPause.setAttr('aria-label', 'Autoplay (Space)');
         btnPlayPause.setAttr('title', 'Autoplay (Space)');
         btnPlayPause.setAttr('aria-pressed', 'false');

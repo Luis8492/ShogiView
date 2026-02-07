@@ -18,6 +18,7 @@
 ### Navigation & Playback
 
 * Move controls: **First / Back / Forward / Last**
+* Control button labels can be configured via `controlButtonLabelMode` (`"text-with-icon"` or `"icon-only"`)
 * Keyboard shortcuts (when focused):
 
   * ← / → : previous / next move
