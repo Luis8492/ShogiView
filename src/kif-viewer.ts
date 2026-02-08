@@ -698,16 +698,19 @@ export function renderKif(
 
     let activeTree: MoveTree | null = null;
     if (boardWidthMode === 'auto') {
+      const handleViewportResize = () => {
+        applyBoardWrapperWidth();
+      };
       if (typeof ResizeObserver !== 'undefined') {
-        const resizeObserver = new ResizeObserver(() => {
-          applyBoardWrapperWidth();
-        });
+        const resizeObserver = new ResizeObserver(handleViewportResize);
         resizeObserver.observe(container);
         renderChild.register(() => resizeObserver.disconnect());
-      } else {
-        renderChild.registerDomEvent(window, 'resize', () => {
-          applyBoardWrapperWidth();
-        });
+      }
+      renderChild.registerDomEvent(window, 'resize', handleViewportResize);
+      const visualViewport = window.visualViewport;
+      if (visualViewport) {
+        renderChild.registerDomEvent(visualViewport, 'resize', handleViewportResize);
+        renderChild.registerDomEvent(visualViewport, 'scroll', handleViewportResize);
       }
     }
 
