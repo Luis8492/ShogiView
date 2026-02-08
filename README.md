@@ -19,6 +19,7 @@
 
 * Move controls: **First / Back / Forward / Last**
 * Control button labels can be configured via `controlButtonLabelMode` (`"text-with-icon"` or `"icon-only"`)
+* Board wrapper width can be configured via `boardWidthMode` (`"auto"` or `"manual"`) and `boardWrapperWidth` (manual width in px)
 * Keyboard shortcuts (when focused):
 
   * ← / → : previous / next move
@@ -97,17 +98,21 @@ Click inside the viewer (or its controls) once to enable keyboard shortcuts.
 
 ### Settings
 
-You can change how the viewer control button labels are displayed:
+You can change viewer display settings from **Settings → Community plugins → ShogiView**:
 
-1. Open **Settings → Community plugins**.
-2. Select **ShogiView**.
-3. In **Control button labels**, choose one of:
+1. In **Control button labels**, choose one of:
    * **文字 + アイコン** (`text-with-icon`)
      * `First ⏮` / `Back ◀` / `Forward ▶` / `Last ⏭`
      * `Autoplay ▶` (stopped) / `Pause ⏸` (playing)
    * **アイコンのみ** (`icon-only`)
      * `⏮` / `◀` / `▶` / `⏭`
      * `▶` (stopped) / `⏸` (playing)
+2. In **Board width mode**, choose one of:
+   * **自動** (`auto`): board-wrapper width is derived from the note reading area width.
+   * **手動** (`manual`): board-wrapper width is fixed to the value in **Board wrapper width (px)**.
+3. In **Board wrapper width (px)**, set a width between `360` and `1400` when manual mode is selected.
+
+When board width changes, cell size is scaled and piece text (including captured pieces) scales with the same ratio, so promoted piece rendering remains visually consistent.
 
 ---
 
