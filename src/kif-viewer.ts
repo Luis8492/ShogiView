@@ -1,7 +1,4 @@
-import {
-  type ControlButtonLabelMode,
-  clampBoardCellSizePx,
-} from './settings';
+import type { ControlButtonLabelMode } from './settings';
 // --- Types & helpers ---
 export interface RenderChildLike {
   registerInterval(id: number): void;
@@ -21,7 +18,6 @@ export interface RenderContextLike {
 export interface RenderKifOptions {
   createRenderChild?: (container: HTMLElement) => RenderChildLike;
   controlButtonLabelMode?: ControlButtonLabelMode;
-  boardCellSizePx?: number;
 }
 type Side = 'B' | 'W'; // B=先手, W=後手
 
@@ -79,15 +75,6 @@ type ControlButtonKind = 'first' | 'prev' | 'next' | 'last' | 'playPause';
 function resolveControlButtonLabelMode(mode?: ControlButtonLabelMode): ControlButtonLabelMode {
   return mode === 'icon-only' ? 'icon-only' : 'text-with-icon';
 }
-
-
-function resolveBoardCellSizePx(value?: number): number {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    return clampBoardCellSizePx(36);
-  }
-  return clampBoardCellSizePx(Math.round(value));
-}
-
 
 function getControlButtonText(
   mode: ControlButtonLabelMode,
@@ -492,8 +479,6 @@ export function renderKif(
   options?: RenderKifOptions,
 ): void {
   const container = el.createDiv({ cls: 'shogi-kif' });
-  const boardCellSizePx = resolveBoardCellSizePx(options?.boardCellSizePx);
-  container.style.setProperty('--shogi-cell-size', `${boardCellSizePx}px`);
   container.tabIndex = 0;
   container.setAttr('role', 'region');
   container.setAttr('aria-label', 'Shogi KIF viewer');

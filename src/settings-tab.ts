@@ -1,7 +1,6 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 
 import type ShogiKifViewer from '../main';
-import { BOARD_CELL_SIZE_RANGE, clampBoardCellSizePx } from './settings';
 
 export class ShogiViewSettingTab extends PluginSettingTab {
   plugin: ShogiKifViewer;
@@ -28,20 +27,5 @@ export class ShogiViewSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           });
       });
-
-    new Setting(containerEl)
-      .setName('Board cell size (px)')
-      .setDesc(`盤面の1マスの大きさ（${BOARD_CELL_SIZE_RANGE.min}〜${BOARD_CELL_SIZE_RANGE.max}px）`)
-      .addSlider((slider) => {
-        slider
-          .setLimits(BOARD_CELL_SIZE_RANGE.min, BOARD_CELL_SIZE_RANGE.max, 1)
-          .setValue(this.plugin.settings.boardCellSizePx)
-          .setDynamicTooltip()
-          .onChange(async (value) => {
-            this.plugin.settings.boardCellSizePx = clampBoardCellSizePx(value);
-            await this.plugin.saveSettings();
-          });
-      });
-
   }
 }
