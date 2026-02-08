@@ -663,8 +663,8 @@ export function renderKif(
       if (boardWidthMode === 'auto') {
         const containerRect = container.getBoundingClientRect();
         const containerWidth = container.clientWidth || containerRect.width;
-        const containerHeight = container.clientHeight || containerRect.height;
-        const basisLength = Math.min(containerWidth, containerHeight);
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const basisLength = Math.min(containerWidth, viewportHeight);
         targetWidth = Math.max(
           MIN_BOARD_WRAPPER_WIDTH,
           Math.min(MAX_BOARD_WRAPPER_WIDTH, Math.floor(basisLength - BOARD_WRAPPER_MIN_MARGIN * 2)),
