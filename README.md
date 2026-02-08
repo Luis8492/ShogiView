@@ -101,15 +101,15 @@ Click inside the viewer (or its controls) once to enable keyboard shortcuts.
 You can change viewer display settings from **Settings → Community plugins → ShogiView**:
 
 1. In **Control button labels**, choose one of:
-   * **文字 + アイコン** (`text-with-icon`)
+   * **Text + icon** (`text-with-icon`)
      * `First ⏮` / `Back ◀` / `Forward ▶` / `Last ⏭`
      * `Autoplay ▶` (stopped) / `Pause ⏸` (playing)
-   * **アイコンのみ** (`icon-only`)
+   * **Icon only** (`icon-only`)
      * `⏮` / `◀` / `▶` / `⏭`
      * `▶` (stopped) / `⏸` (playing)
 2. In **Board width mode**, choose one of:
-   * **自動** (`auto`): board-wrapper width is derived from the smaller value of the note reading area width and height.
-   * **手動** (`manual`): board-wrapper width is fixed to the value in **Board wrapper width (px)**.
+   * **Auto** (`auto`): board-wrapper width is derived from the smaller value of the note reading area width and height.
+   * **Manual** (`manual`): board-wrapper width is fixed to the value in **Board wrapper width (px)**.
 3. In **Board wrapper width (px)**, set a width between `360` and `1400` when manual mode is selected. The value is applied when you press **Enter** or leave the field.
 
 When board width changes, cell size is scaled and piece text (including captured pieces) scales with the same ratio, so promoted piece rendering remains visually consistent.
