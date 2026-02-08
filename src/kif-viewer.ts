@@ -108,8 +108,10 @@ const BOARD_SIZE = 9;
 const DEFAULT_BOARD_WRAPPER_WIDTH = 560;
 const MIN_BOARD_WRAPPER_WIDTH = 360;
 const MAX_BOARD_WRAPPER_WIDTH = 1400;
-const BOARD_WRAPPER_PADDING_X = 24;
 const BOARD_WRAPPER_MIN_MARGIN = 8;
+const BOARD_WRAPPER_COLUMN_GAP = 24;
+const BOARD_WITH_COORDINATES_EXTRA_WIDTH = 12;
+const HAND_COLUMN_WIDTH_RATIO = 1.8;
 
 function resolveBoardWidthMode(mode?: BoardWidthMode): BoardWidthMode {
   return mode === 'manual' ? 'manual' : 'auto';
@@ -123,8 +125,10 @@ function resolveBoardWrapperWidth(width?: number): number {
 }
 
 function calcBoardCellSize(boardWrapperWidth: number): number {
-  const boardAreaWidth = Math.max(0, boardWrapperWidth - BOARD_WRAPPER_PADDING_X);
-  return Math.max(20, Math.floor(boardAreaWidth / BOARD_SIZE));
+  const variableColumns = BOARD_SIZE + 2 + HAND_COLUMN_WIDTH_RATIO * 2;
+  const fixedWidth = BOARD_WITH_COORDINATES_EXTRA_WIDTH + BOARD_WRAPPER_COLUMN_GAP;
+  const usableWidth = Math.max(0, boardWrapperWidth - fixedWidth);
+  return Math.max(20, Math.floor(usableWidth / variableColumns));
 }
 
 
@@ -665,7 +669,8 @@ export function renderKif(
       }
       const cellSize = calcBoardCellSize(targetWidth);
       boardWrapper.style.setProperty('--shogi-cell-size', `${cellSize}px`);
-      boardWrapper.style.setProperty('--shogi-board-wrapper-width', `${cellSize * BOARD_SIZE + BOARD_WRAPPER_PADDING_X}px`);
+      boardWrapper.style.setProperty('--shogi-hand-column-width', `${Math.round(cellSize * HAND_COLUMN_WIDTH_RATIO)}px`);
+      boardWrapper.style.setProperty('--shogi-board-wrapper-width', `${targetWidth}px`);
     };
 
     applyBoardWrapperWidth();

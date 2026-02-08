@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting } from 'obsidian';
+import { App, PluginSettingTab, Setting, TextComponent } from 'obsidian';
 
 import type ShogiKifViewer from '../main';
 import type { BoardWidthMode, ControlButtonLabelMode } from './settings';
@@ -44,6 +44,25 @@ export class ShogiViewSettingTab extends PluginSettingTab {
       }
     };
 
+    const commitManualWidth = async (text: TextComponent) => {
+      const rawValue = text.getValue().trim();
+      const parsed = Number.parseInt(rawValue, 10);
+      if (!Number.isFinite(parsed)) {
+        text.setValue(String(this.plugin.settings.boardWrapperWidth));
+        return;
+      }
+
+      const clamped = Math.max(MIN_BOARD_WRAPPER_WIDTH, Math.min(MAX_BOARD_WRAPPER_WIDTH, parsed));
+      text.setValue(String(clamped));
+
+      if (this.plugin.settings.boardWrapperWidth === clamped) {
+        return;
+      }
+
+      this.plugin.settings.boardWrapperWidth = clamped;
+      await this.plugin.saveSettings();
+    };
+
     new Setting(containerEl)
       .setName('Board width mode')
       .setDesc('盤面+持ち駒全体の幅をノート表示幅から自動決定するか、手動で固定するかを選択する')
@@ -66,24 +85,25 @@ export class ShogiViewSettingTab extends PluginSettingTab {
         text
           .setPlaceholder('560')
           .setValue(String(this.plugin.settings.boardWrapperWidth))
-          .onChange(async (value) => {
-            const parsed = Number.parseInt(value, 10);
-            if (!Number.isFinite(parsed)) {
-              return;
-            }
-            const clamped = Math.max(MIN_BOARD_WRAPPER_WIDTH, Math.min(MAX_BOARD_WRAPPER_WIDTH, parsed));
-            if (this.plugin.settings.boardWrapperWidth === clamped) {
-              return;
-            }
-            this.plugin.settings.boardWrapperWidth = clamped;
-            text.setValue(String(clamped));
-            await this.plugin.saveSettings();
+          .onChange(() => {
+            // タイピング中は値を確定しない。blur/Enterで確定する。
           });
 
         text.inputEl.type = 'number';
         text.inputEl.min = String(MIN_BOARD_WRAPPER_WIDTH);
         text.inputEl.max = String(MAX_BOARD_WRAPPER_WIDTH);
         text.inputEl.step = '1';
+
+        text.inputEl.addEventListener('blur', () => {
+          void commitManualWidth(text);
+        });
+
+        text.inputEl.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter') return;
+          event.preventDefault();
+          void commitManualWidth(text);
+          text.inputEl.blur();
+        });
       });
 
     updateWidthInputState();

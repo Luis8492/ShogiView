@@ -140,7 +140,8 @@ gap: 6px;
 }
 
 .shogi-kif .board-wrapper {
---shogi-board-wrapper-width: calc(var(--shogi-cell-size) * 9 + 24px);
+--shogi-board-wrapper-width: 560px;
+--shogi-hand-column-width: calc(var(--shogi-cell-size) * 1.8);
 display: grid;
 grid-template-columns: auto auto auto;
 grid-template-areas: 'gote board sente';
@@ -206,7 +207,7 @@ width: min(100%, var(--shogi-board-wrapper-width));
 
 .shogi-kif .player-info {
  display: flex;
- font-size: calc(var(--shogi-cell-size) * 0.26);
+ font-size: calc(var(--shogi-cell-size) * 0.34);
  flex-direction: column;
  align-items: center;
  gap: 2px;
@@ -433,7 +434,8 @@ display: none !important;
 }
 .shogi-kif .hands {
  display: flex;
- font-size: calc(var(--shogi-cell-size) * 0.45);
+ width: var(--shogi-hand-column-width);
+ font-size: calc(var(--shogi-cell-size) * 0.39);
  flex-direction: column;
  gap: 4px;
  margin: 0;
@@ -477,7 +479,7 @@ user-select: none;
 }
 .shogi-kif .cell {
   width: var(--shogi-cell-size); height: var(--shogi-cell-size);
-  font-size: calc(var(--shogi-cell-size) * 0.68);
+  font-size: calc(var(--shogi-cell-size) * 0.44);
   display: flex; align-items: center; justify-content: center;
   background: var(--background-secondary);
   border-radius: 4px;
