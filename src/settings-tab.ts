@@ -20,11 +20,11 @@ export class ShogiViewSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Control button labels')
-      .setDesc('First/Back/Forward/Last/Autoplay ボタンを文字付きまたはアイコンのみで表示する')
+      .setDesc('Choose whether the First/Back/Forward/Last/Autoplay buttons show text with icons or icons only')
       .addDropdown((dropdown) => {
         dropdown
-          .addOption('text-with-icon', '文字 + アイコン')
-          .addOption('icon-only', 'アイコンのみ')
+          .addOption('text-with-icon', 'Text + icon')
+          .addOption('icon-only', 'Icon only')
           .setValue(this.plugin.settings.controlButtonLabelMode)
           .onChange(async (value) => {
             this.plugin.settings.controlButtonLabelMode = value as ControlButtonLabelMode;
@@ -65,11 +65,11 @@ export class ShogiViewSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName('Board width mode')
-      .setDesc('盤面+持ち駒全体の幅をノート表示幅から自動決定するか、手動で固定するかを選択する')
+      .setDesc('Choose whether the board + captured pieces width is automatically derived from the note area or fixed manually')
       .addDropdown((dropdown) => {
         dropdown
-          .addOption('auto', '自動')
-          .addOption('manual', '手動')
+          .addOption('auto', 'Auto')
+          .addOption('manual', 'Manual')
           .setValue(this.plugin.settings.boardWidthMode)
           .onChange(async (value) => {
             this.plugin.settings.boardWidthMode = value as BoardWidthMode;
@@ -81,13 +81,13 @@ export class ShogiViewSettingTab extends PluginSettingTab {
 
     widthValueSetting = new Setting(containerEl)
       .setName('Board wrapper width (px)')
-      .setDesc(`手動モード時の board-wrapper 幅を ${MIN_BOARD_WRAPPER_WIDTH}px〜${MAX_BOARD_WRAPPER_WIDTH}px で指定する`)
+      .setDesc(`Set the board-wrapper width between ${MIN_BOARD_WRAPPER_WIDTH}px and ${MAX_BOARD_WRAPPER_WIDTH}px when Manual mode is selected`)
       .addText((text) => {
         text
           .setPlaceholder('560')
           .setValue(String(this.plugin.settings.boardWrapperWidth))
           .onChange(() => {
-            // タイピング中は値を確定しない。blur/Enterで確定する。
+            // Do not commit while typing. Commit on blur/Enter.
           });
 
         text.inputEl.type = 'number';
