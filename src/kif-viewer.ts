@@ -661,10 +661,13 @@ export function renderKif(
     const applyBoardWrapperWidth = () => {
       let targetWidth = manualBoardWrapperWidth;
       if (boardWidthMode === 'auto') {
-        const containerWidth = container.clientWidth || container.getBoundingClientRect().width;
+        const containerRect = container.getBoundingClientRect();
+        const containerWidth = container.clientWidth || containerRect.width;
+        const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+        const basisLength = Math.min(containerWidth, viewportHeight);
         targetWidth = Math.max(
           MIN_BOARD_WRAPPER_WIDTH,
-          Math.min(MAX_BOARD_WRAPPER_WIDTH, Math.floor(containerWidth - BOARD_WRAPPER_MIN_MARGIN * 2)),
+          Math.min(MAX_BOARD_WRAPPER_WIDTH, Math.floor(basisLength - BOARD_WRAPPER_MIN_MARGIN * 2)),
         );
       }
       const cellSize = calcBoardCellSize(targetWidth);

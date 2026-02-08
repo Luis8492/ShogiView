@@ -78,6 +78,7 @@ export class ShogiViewSettingTab extends PluginSettingTab {
           });
       });
 
+
     widthValueSetting = new Setting(containerEl)
       .setName('Board wrapper width (px)')
       .setDesc(`手動モード時の board-wrapper 幅を ${MIN_BOARD_WRAPPER_WIDTH}px〜${MAX_BOARD_WRAPPER_WIDTH}px で指定する`)
