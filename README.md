@@ -97,17 +97,21 @@ Click inside the viewer (or its controls) once to enable keyboard shortcuts.
 
 ### Settings
 
-You can change how the viewer control button labels are displayed:
+設定画面では、盤面サイズと操作ボタンの見た目を変更できる。
 
-1. Open **Settings → Community plugins**.
-2. Select **ShogiView**.
-3. In **Control button labels**, choose one of:
-   * **文字 + アイコン** (`text-with-icon`)
-     * `First ⏮` / `Back ◀` / `Forward ▶` / `Last ⏭`
-     * `Autoplay ▶` (stopped) / `Pause ⏸` (playing)
-   * **アイコンのみ** (`icon-only`)
-     * `⏮` / `◀` / `▶` / `⏭`
-     * `▶` (stopped) / `⏸` (playing)
+1. **Settings → Community plugins** を開く。
+2. **ShogiView** を選択する。
+3. 次の項目を調整する。
+   * **Control button labels**
+     * **文字 + アイコン** (`text-with-icon`)
+       * `First ⏮` / `Back ◀` / `Forward ▶` / `Last ⏭`
+       * `Autoplay ▶`（停止中）/ `Pause ⏸`（再生中）
+     * **アイコンのみ** (`icon-only`)
+       * `⏮` / `◀` / `▶` / `⏭`
+       * `▶`（停止中）/ `⏸`（再生中）
+   * **Board cell size (px)**
+     * 盤面の1マスの大きさを `24〜64px` で変更する項目である。
+     * 駒文字サイズはこの値に追従して自動で拡大・縮小される。
 
 ---
 

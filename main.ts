@@ -1,7 +1,11 @@
 import { MarkdownPostProcessorContext, MarkdownRenderChild, Plugin } from 'obsidian';
 
 import { renderKif } from './src/kif-viewer';
-import { DEFAULT_SETTINGS, ShogiViewSettings } from './src/settings';
+import {
+  DEFAULT_SETTINGS,
+  ShogiViewSettings,
+  clampBoardCellSizePx,
+} from './src/settings';
 import { ShogiViewSettingTab } from './src/settings-tab';
 
 class ShogiKifRenderChild extends MarkdownRenderChild {
@@ -15,6 +19,7 @@ export default class ShogiKifViewer extends Plugin {
 
   override async onload(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings.boardCellSizePx = clampBoardCellSizePx(this.settings.boardCellSizePx);
     this.addSettingTab(new ShogiViewSettingTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
   }
@@ -27,6 +32,7 @@ export default class ShogiKifViewer extends Plugin {
     renderKif(src, el, ctx, {
       createRenderChild: (container: HTMLElement) => new ShogiKifRenderChild(container),
       controlButtonLabelMode: this.settings.controlButtonLabelMode,
+      boardCellSizePx: this.settings.boardCellSizePx,
     });
   }
 }

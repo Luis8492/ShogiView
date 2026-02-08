@@ -482,6 +482,8 @@ user-select: none;
 .shogi-kif .cell .piece {
   display: inline-block;
   font-weight: inherit;
+  font-size: calc(var(--shogi-cell-size) * 0.65);
+  line-height: 1;
 }
 .shogi-kif .piece-promoted {
   color: var(--shogi-promoted-color);
