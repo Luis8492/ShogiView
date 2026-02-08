@@ -140,6 +140,8 @@ gap: 6px;
 }
 
 .shogi-kif .board-wrapper {
+--shogi-board-wrapper-width: 560px;
+--shogi-hand-column-width: calc(var(--shogi-cell-size) * 1.8);
 display: grid;
 grid-template-columns: auto auto auto;
 grid-template-areas: 'gote board sente';
@@ -147,6 +149,7 @@ justify-items: center;
 align-items: center;
 column-gap: 12px;
 row-gap: 6px;
+width: min(100%, var(--shogi-board-wrapper-width));
 }
 
 .shogi-kif .board-with-coordinates {
@@ -166,7 +169,7 @@ row-gap: 6px;
  display: grid;
  grid-template-columns: repeat(9, var(--shogi-cell-size));
  gap: var(--shogi-cell-gap);
- font-size: 0.85em;
+ font-size: calc(var(--shogi-cell-size) * 0.34);
  font-weight: 600;
  color: var(--text-muted);
  justify-items: center;
@@ -177,7 +180,7 @@ row-gap: 6px;
  display: grid;
  grid-template-rows: repeat(9, var(--shogi-cell-size));
  gap: var(--shogi-cell-gap);
- font-size: 0.85em;
+ font-size: calc(var(--shogi-cell-size) * 0.34);
  font-weight: 600;
  color: var(--text-muted);
  justify-items: center;
@@ -204,10 +207,10 @@ row-gap: 6px;
 
 .shogi-kif .player-info {
  display: flex;
+ font-size: calc(var(--shogi-cell-size) * 0.34);
  flex-direction: column;
  align-items: center;
  gap: 2px;
- font-size: 0.95em;
  text-align: center;
 }
 
@@ -431,11 +434,13 @@ display: none !important;
 }
 .shogi-kif .hands {
  display: flex;
+ width: var(--shogi-hand-column-width);
+ font-size: calc(var(--shogi-cell-size) * 0.39);
  flex-direction: column;
  gap: 4px;
  margin: 0;
- font-size: 0.9em;
 }
+
 .shogi-kif .hands-opponent {
  grid-area: gote;
  justify-self: end;
@@ -474,6 +479,7 @@ user-select: none;
 }
 .shogi-kif .cell {
   width: var(--shogi-cell-size); height: var(--shogi-cell-size);
+  font-size: calc(var(--shogi-cell-size) * 0.44);
   display: flex; align-items: center; justify-content: center;
   background: var(--background-secondary);
   border-radius: 4px;

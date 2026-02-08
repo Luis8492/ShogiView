@@ -27,6 +27,8 @@ export default class ShogiKifViewer extends Plugin {
     renderKif(src, el, ctx, {
       createRenderChild: (container: HTMLElement) => new ShogiKifRenderChild(container),
       controlButtonLabelMode: this.settings.controlButtonLabelMode,
+      boardWidthMode: this.settings.boardWidthMode,
+      boardWrapperWidth: this.settings.boardWrapperWidth,
     });
   }
 }

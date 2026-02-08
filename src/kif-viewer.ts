@@ -1,4 +1,4 @@
-import type { ControlButtonLabelMode } from './settings';
+import type { BoardWidthMode, ControlButtonLabelMode } from './settings';
 // --- Types & helpers ---
 export interface RenderChildLike {
   registerInterval(id: number): void;
@@ -18,6 +18,8 @@ export interface RenderContextLike {
 export interface RenderKifOptions {
   createRenderChild?: (container: HTMLElement) => RenderChildLike;
   controlButtonLabelMode?: ControlButtonLabelMode;
+  boardWidthMode?: BoardWidthMode;
+  boardWrapperWidth?: number;
 }
 type Side = 'B' | 'W'; // B=先手, W=後手
 
@@ -101,6 +103,35 @@ function getControlButtonText(
     default: return '';
   }
 }
+
+const BOARD_SIZE = 9;
+const DEFAULT_BOARD_WRAPPER_WIDTH = 560;
+const MIN_BOARD_WRAPPER_WIDTH = 360;
+const MAX_BOARD_WRAPPER_WIDTH = 1400;
+const BOARD_WRAPPER_MIN_MARGIN = 8;
+const BOARD_WRAPPER_COLUMN_GAP = 24;
+const BOARD_WITH_COORDINATES_EXTRA_WIDTH = 12;
+const HAND_COLUMN_WIDTH_RATIO = 1.8;
+
+function resolveBoardWidthMode(mode?: BoardWidthMode): BoardWidthMode {
+  return mode === 'manual' ? 'manual' : 'auto';
+}
+
+function resolveBoardWrapperWidth(width?: number): number {
+  if (!Number.isFinite(width)) {
+    return DEFAULT_BOARD_WRAPPER_WIDTH;
+  }
+  return Math.max(MIN_BOARD_WRAPPER_WIDTH, Math.min(MAX_BOARD_WRAPPER_WIDTH, Math.round(width as number)));
+}
+
+function calcBoardCellSize(boardWrapperWidth: number): number {
+  const variableColumns = BOARD_SIZE + 2 + HAND_COLUMN_WIDTH_RATIO * 2;
+  const fixedWidth = BOARD_WITH_COORDINATES_EXTRA_WIDTH + BOARD_WRAPPER_COLUMN_GAP;
+  const usableWidth = Math.max(0, boardWrapperWidth - fixedWidth);
+  return Math.max(20, Math.floor(usableWidth / variableColumns));
+}
+
+
 
 const JP_NUM_FULL = '１２３４５６７８９';
 const JP_NUM_KANJI = '一二三四五六七八九';
@@ -624,6 +655,26 @@ export function renderKif(
     const layout = boardSection.createDiv({ cls: 'board-layout' });
     const boardArea = layout.createDiv({ cls: 'board-area' });
     const boardWrapper = boardArea.createDiv({ cls: 'board-wrapper' });
+    const boardWidthMode = resolveBoardWidthMode(options?.boardWidthMode);
+    const manualBoardWrapperWidth = resolveBoardWrapperWidth(options?.boardWrapperWidth);
+
+    const applyBoardWrapperWidth = () => {
+      let targetWidth = manualBoardWrapperWidth;
+      if (boardWidthMode === 'auto') {
+        const containerWidth = container.clientWidth || container.getBoundingClientRect().width;
+        targetWidth = Math.max(
+          MIN_BOARD_WRAPPER_WIDTH,
+          Math.min(MAX_BOARD_WRAPPER_WIDTH, Math.floor(containerWidth - BOARD_WRAPPER_MIN_MARGIN * 2)),
+        );
+      }
+      const cellSize = calcBoardCellSize(targetWidth);
+      boardWrapper.style.setProperty('--shogi-cell-size', `${cellSize}px`);
+      boardWrapper.style.setProperty('--shogi-hand-column-width', `${Math.round(cellSize * HAND_COLUMN_WIDTH_RATIO)}px`);
+      boardWrapper.style.setProperty('--shogi-board-wrapper-width', `${targetWidth}px`);
+    };
+
+    applyBoardWrapperWidth();
+
     const handOpponent = boardWrapper.createDiv({ cls: 'hands hands-opponent' });
     const boardWithCoordinates = boardWrapper.createDiv({ cls: 'board-with-coordinates' });
     const handPlayer = boardWrapper.createDiv({ cls: 'hands hands-player' });
@@ -643,6 +694,20 @@ export function renderKif(
     const commentsDiv = commentsContainer.createDiv({ cls: 'meta comments' });
 
     let activeTree: MoveTree | null = null;
+    if (boardWidthMode === 'auto') {
+      if (typeof ResizeObserver !== 'undefined') {
+        const resizeObserver = new ResizeObserver(() => {
+          applyBoardWrapperWidth();
+        });
+        resizeObserver.observe(container);
+        renderChild.register(() => resizeObserver.disconnect());
+      } else {
+        renderChild.registerDomEvent(window, 'resize', () => {
+          applyBoardWrapperWidth();
+        });
+      }
+    }
+
     renderChild.registerDomEvent(treeSvg, 'click', (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target : null;
       const nodeEl = target?.closest('[data-node-id]');
