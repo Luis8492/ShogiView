@@ -486,7 +486,6 @@ user-select: none;
   line-height: 1;
 }
 .shogi-kif .piece-promoted {
-  font-size: calc(var(--shogi-cell-size) * 0.48);
   color: var(--shogi-promoted-color);
 }
 .shogi-kif .cell .piece-opponent {
