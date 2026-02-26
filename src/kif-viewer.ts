@@ -531,7 +531,7 @@ function parseBodSource(text: string): ParsedSource {
       header['手番'] = trimmed;
       continue;
     }
-    if (!trimmed.includes('|')) continue;
+    if (!trimmed.includes('|') || boardRank > BOARD_SIZE) continue;
     const cells = line.match(/\|([^|]+)\|/);
     if (!cells) continue;
     const tokens = parseBodRowTokens(cells[1]);
@@ -546,7 +546,6 @@ function parseBodSource(text: string): ParsedSource {
       board[boardRank - 1][BOARD_SIZE - f] = { side, kind };
     }
     boardRank += 1;
-    if (boardRank > BOARD_SIZE) break;
   }
   return {
     header,
