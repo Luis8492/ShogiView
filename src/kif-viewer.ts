@@ -450,7 +450,7 @@ function parseSfenBoard(boardToken: string): (Piece | null)[][] {
       if (fileIdx >= BOARD_SIZE) throw new Error('Invalid SFEN board width.');
       const side: Side = ch === ch.toUpperCase() ? 'B' : 'W';
       const kind = promoted ? promoteKind(base) : base;
-      board[rankIdx][fileIdx] = { side, kind };
+      board[rankIdx][BOARD_SIZE - 1 - fileIdx] = { side, kind };
       fileIdx += 1;
       promoted = false;
     }
@@ -498,6 +498,17 @@ function parseBodHands(line: string): PieceKind[] {
   return content.split(/[\s　]+/).map((token) => JAPANESE_KIND_MAP[token]).filter((v): v is PieceKind => Boolean(v));
 }
 
+function parseBodRowTokens(rowContent: string): string[] | null {
+  const normalized = rowContent.replace(/[ 　]/g, '');
+  if (!normalized) return null;
+
+  const tokenRe = /(v?(?:成香|成桂|成銀|[歩香桂銀金角飛玉王と馬龍竜])|・)/g;
+  const tokens = normalized.match(tokenRe);
+  if (!tokens || tokens.length !== BOARD_SIZE) return null;
+  if (tokens.join('') !== normalized) return null;
+  return tokens;
+}
+
 function parseBodSource(text: string): ParsedSource {
   const board = Array.from({ length: BOARD_SIZE }, () => Array<Piece | null>(BOARD_SIZE).fill(null));
   const hands: Hands = { B: [], W: [] };
@@ -523,8 +534,8 @@ function parseBodSource(text: string): ParsedSource {
     if (!trimmed.includes('|')) continue;
     const cells = line.match(/\|([^|]+)\|/);
     if (!cells) continue;
-    const tokens = cells[1].trim().split(/\s+/);
-    if (tokens.length !== BOARD_SIZE) continue;
+    const tokens = parseBodRowTokens(cells[1]);
+    if (!tokens) continue;
     for (let f = 1; f <= BOARD_SIZE; f++) {
       const token = tokens[f - 1];
       if (!token || token === '・') continue;
@@ -532,7 +543,7 @@ function parseBodSource(text: string): ParsedSource {
       const rawKind = token.replace(/^v/, '');
       const kind = JAPANESE_KIND_MAP[rawKind] ?? (rawKind as PieceKind);
       if (!kind) continue;
-      board[boardRank - 1][f - 1] = { side, kind };
+      board[boardRank - 1][BOARD_SIZE - f] = { side, kind };
     }
     boardRank += 1;
     if (boardRank > BOARD_SIZE) break;
@@ -584,7 +595,7 @@ function parseCsaSource(text: string): ParsedSource {
         const side: Side = token[0] === '+' ? 'B' : 'W';
         const kind = parseCsaPieceKind(token.slice(1));
         if (!kind) continue;
-        board[rank - 1][i] = { side, kind };
+        board[rank - 1][BOARD_SIZE - 1 - i] = { side, kind };
       }
       continue;
     }
@@ -599,7 +610,7 @@ function parseCsaSource(text: string): ParsedSource {
           hands[side].push(demoteKind(kind));
         } else {
           const { f, r } = parseCsaSquare(square);
-          board[r - 1][f - 1] = { side, kind };
+          board[r - 1][BOARD_SIZE - f] = { side, kind };
         }
       }
       continue;
