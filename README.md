@@ -2,7 +2,7 @@
 
 ## Overview
 
-**ShogiView** is an Obsidian plugin that renders Shogi game records written in **KIF format** directly inside Markdown notes. It provides an interactive board, move navigation, variation browsing, and comments, allowing you to review and study games without leaving Obsidian.
+**ShogiView** is an Obsidian plugin that renders Shogi data directly inside Markdown notes. It supports **KIF game records** and board-position formats such as **SFEN**, **BOD**, and **CSA**. It provides an interactive board, move navigation, variation browsing, and comments, allowing you to review and study games without leaving Obsidian.
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### Core Functionality
 
-* Render KIF game records embedded in Markdown code blocks
+* Render Shogi data embedded in Markdown code blocks (`kif`, `sfen`, `bod`, `csa`)
 * Interactive Shogi board with real-time updates
 * Display captured pieces and highlight move origin/destination
 * Show comments, elapsed time, and metadata (event, opening, etc.)
@@ -63,7 +63,9 @@
 
 ---
 
-### Writing a KIF Block
+### Writing supported code blocks
+
+#### KIF (move record)
 
 Insert a KIF record using a fenced code block:
 
@@ -85,6 +87,55 @@ Insert a KIF record using a fenced code block:
 ````
 
 Open the note in **Reading View** to display the board and variation tree.
+
+#### SFEN (board position)
+
+````markdown
+```sfen
+ln5nl/1rk2bg2/3p1gspp/pSP1p1p2/5P1PP/Pp1BP1S2/1P1PG1P2/K1G3+r2/LNs5L w NPp
+```
+````
+
+#### BOD (board diagram)
+
+````markdown
+```bod
+後手の持駒：歩
+  ９ ８ ７ ６ ５ ４ ３ ２ １
++---------------------------+
+|v香v桂 ・ ・ ・ ・ ・v桂v香|一
+| ・v飛v玉 ・ ・v角v金 ・ ・|二
+| ・ ・ ・v歩 ・v金v銀v歩v歩|三
+|v歩 銀 歩 ・v歩 ・v歩 ・ ・|四
+| ・ ・ ・ ・ ・ 歩 ・ 歩 歩|五
+| 歩v歩 ・ 角 歩 ・ 銀 ・ ・|六
+| ・ 歩 ・ 歩 金 ・ 歩 ・ ・|七
+| 玉 ・ 金 ・ ・ ・v龍 ・ ・|八
+| 香 桂v銀 ・ ・ ・ ・ ・ 香|九
++---------------------------+
+先手の持駒：桂 歩
+後手番
+```
+````
+
+#### CSA (board position)
+
+````markdown
+```csa
+P1-KY-KE *  *  *  *  * -KE-KY
+P2 * -HI-OU *  * -KA-KI *  *
+P3 *  *  * -FU * -KI-GI-FU-FU
+P4-FU+GI+FU * -FU * -FU *  *
+P5 *  *  *  *  * +FU * +FU+FU
+P6+FU-FU * +KA+FU * +GI *  *
+P7 * +FU * +FU+KI * +FU *  *
+P8+OU * +KI *  *  * -RY *  *
+P9+KY+KE-GI *  *  *  *  * +KY
+P+00FU00KE
+P-00FU
+-
+```
+````
 
 ---
 
@@ -132,6 +183,13 @@ When board width changes, cell size is scaled and piece text (including captured
 
   * `初期表示手：15`
   * `start-move: 15`
+
+## Position format support details (SFEN / BOD / CSA)
+
+* `sfen` code block: parses board, side-to-move, and pieces in hand.
+* `bod` code block: parses board diagram rows (`|...|`), `先手の持駒`, `後手の持駒`, and side-to-move (`先手番` / `後手番`).
+* `csa` code block: parses `P1`-`P9` board rows, `P+` / `P-` hands (`00XX`), and side-to-move (`+` / `-`).
+* These formats are position-first inputs. Move list playback is not included unless the source itself provides moves (e.g. KIF).
 
 ---
 

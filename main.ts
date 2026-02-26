@@ -17,18 +17,22 @@ export default class ShogiKifViewer extends Plugin {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.addSettingTab(new ShogiViewSettingTab(this.app, this));
     this.registerMarkdownCodeBlockProcessor('kif', (src, el, ctx) => this.renderKif(src, el, ctx));
+    this.registerMarkdownCodeBlockProcessor('sfen', (src, el, ctx) => this.renderKif(src, el, ctx, 'sfen'));
+    this.registerMarkdownCodeBlockProcessor('bod', (src, el, ctx) => this.renderKif(src, el, ctx, 'bod'));
+    this.registerMarkdownCodeBlockProcessor('csa', (src, el, ctx) => this.renderKif(src, el, ctx, 'csa'));
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
   }
 
-  renderKif(src: string, el: HTMLElement, ctx: MarkdownPostProcessorContext) {
+  renderKif(src: string, el: HTMLElement, ctx: MarkdownPostProcessorContext, sourceFormat?: 'kif' | 'sfen' | 'bod' | 'csa') {
     renderKif(src, el, ctx, {
       createRenderChild: (container: HTMLElement) => new ShogiKifRenderChild(container),
       controlButtonLabelMode: this.settings.controlButtonLabelMode,
       boardWidthMode: this.settings.boardWidthMode,
       boardWrapperWidth: this.settings.boardWrapperWidth,
+      sourceFormat,
     });
   }
 }

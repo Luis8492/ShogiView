@@ -20,6 +20,7 @@ export interface RenderKifOptions {
   controlButtonLabelMode?: ControlButtonLabelMode;
   boardWidthMode?: BoardWidthMode;
   boardWrapperWidth?: number;
+  sourceFormat?: 'kif' | 'sfen' | 'bod' | 'csa';
 }
 type Side = 'B' | 'W'; // B=先手, W=後手
 
@@ -279,6 +280,13 @@ function isPromotedKind(kind: PieceKind): boolean {
 
 type Hands = Record<Side, PieceKind[]>;
 
+interface ParsedSource {
+  header: Record<string, string>;
+  root: VariationLine;
+  initialBoard: (Piece | null)[][];
+  initialHands: Hands;
+}
+
 // Very small KIF move parser for lines like:
 // "   1 ２六歩(27)( 0:12/00:00:12)" or with comments lines starting with '*'
 export function parseKif(text: string): { header: Record<string,string>, root: VariationLine } {
@@ -406,6 +414,216 @@ export function parseKif(text: string): { header: Record<string,string>, root: V
   return { header, root };
 }
 
+const SFEN_PIECE_KIND: Record<string, PieceKind> = {
+  p: '歩', l: '香', n: '桂', s: '銀', g: '金', b: '角', r: '飛', k: '玉',
+};
+
+const JAPANESE_KIND_MAP: Record<string, PieceKind> = {
+  歩: '歩', 香: '香', 桂: '桂', 銀: '銀', 金: '金', 角: '角', 飛: '飛', 玉: '玉', 王: '王',
+  と: 'と', 馬: '馬', 龍: '龍', 竜: '龍', 成香: '成香', 成桂: '成桂', 成銀: '成銀',
+};
+
+function cloneBoard(board: (Piece | null)[][]): (Piece | null)[][] {
+  return board.map((row) => row.map((piece) => (piece ? { ...piece } : null)));
+}
+
+function parseSfenBoard(boardToken: string): (Piece | null)[][] {
+  const board = Array.from({ length: BOARD_SIZE }, () => Array<Piece | null>(BOARD_SIZE).fill(null));
+  const ranks = boardToken.split('/');
+  if (ranks.length !== BOARD_SIZE) throw new Error('Invalid SFEN board ranks.');
+
+  ranks.forEach((rankToken, rankIdx) => {
+    let fileIdx = 0;
+    let promoted = false;
+    for (const ch of rankToken) {
+      if (ch === '+') {
+        promoted = true;
+        continue;
+      }
+      if (/\d/.test(ch)) {
+        fileIdx += parseInt(ch, 10);
+        promoted = false;
+        continue;
+      }
+      const base = SFEN_PIECE_KIND[ch.toLowerCase()];
+      if (!base) throw new Error(`Invalid SFEN piece: ${ch}`);
+      if (fileIdx >= BOARD_SIZE) throw new Error('Invalid SFEN board width.');
+      const side: Side = ch === ch.toUpperCase() ? 'B' : 'W';
+      const kind = promoted ? promoteKind(base) : base;
+      board[rankIdx][fileIdx] = { side, kind };
+      fileIdx += 1;
+      promoted = false;
+    }
+    if (fileIdx !== BOARD_SIZE) throw new Error('Invalid SFEN board width.');
+  });
+
+  return board;
+}
+
+function parseSfenHands(handToken: string): Hands {
+  const hands: Hands = { B: [], W: [] };
+  if (handToken === '-') return hands;
+  const re = /(\d+)?([A-Za-z])/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(handToken)) !== null) {
+    const count = m[1] ? parseInt(m[1], 10) : 1;
+    const pieceChar = m[2];
+    const base = SFEN_PIECE_KIND[pieceChar.toLowerCase()];
+    if (!base) continue;
+    const side: Side = pieceChar === pieceChar.toUpperCase() ? 'B' : 'W';
+    for (let i = 0; i < count; i++) hands[side].push(base);
+  }
+  return hands;
+}
+
+function parseSfenSource(text: string): ParsedSource {
+  const tokens = text.trim().split(/\s+/);
+  if (tokens.length < 3) throw new Error('SFEN requires board / turn / hand tokens.');
+  const board = parseSfenBoard(tokens[0]);
+  const hands = parseSfenHands(tokens[2]);
+  const turn = tokens[1] === 'w' ? '後手番' : '先手番';
+  return {
+    header: { 形式: 'SFEN', 手番: turn },
+    root: { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true },
+    initialBoard: board,
+    initialHands: hands,
+  };
+}
+
+function parseBodHands(line: string): PieceKind[] {
+  const idx = line.indexOf('：');
+  if (idx < 0) return [];
+  const content = line.slice(idx + 1).trim();
+  if (!content || content === 'なし') return [];
+  return content.split(/[\s　]+/).map((token) => JAPANESE_KIND_MAP[token]).filter((v): v is PieceKind => Boolean(v));
+}
+
+function parseBodSource(text: string): ParsedSource {
+  const board = Array.from({ length: BOARD_SIZE }, () => Array<Piece | null>(BOARD_SIZE).fill(null));
+  const hands: Hands = { B: [], W: [] };
+  const header: Record<string, string> = { 形式: 'BOD' };
+  const lines = text.split(/\r?\n/);
+  let boardRank = 1;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith('先手の持駒')) {
+      hands.B = parseBodHands(trimmed);
+      continue;
+    }
+    if (trimmed.startsWith('後手の持駒')) {
+      hands.W = parseBodHands(trimmed);
+      continue;
+    }
+    if (trimmed === '先手番' || trimmed === '後手番') {
+      header['手番'] = trimmed;
+      continue;
+    }
+    if (!trimmed.includes('|')) continue;
+    const cells = line.match(/\|([^|]+)\|/);
+    if (!cells) continue;
+    const tokens = cells[1].trim().split(/\s+/);
+    if (tokens.length !== BOARD_SIZE) continue;
+    for (let f = 1; f <= BOARD_SIZE; f++) {
+      const token = tokens[f - 1];
+      if (!token || token === '・') continue;
+      const side: Side = token.startsWith('v') ? 'W' : 'B';
+      const rawKind = token.replace(/^v/, '');
+      const kind = JAPANESE_KIND_MAP[rawKind] ?? (rawKind as PieceKind);
+      if (!kind) continue;
+      board[boardRank - 1][f - 1] = { side, kind };
+    }
+    boardRank += 1;
+    if (boardRank > BOARD_SIZE) break;
+  }
+  return {
+    header,
+    root: { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true },
+    initialBoard: board,
+    initialHands: hands,
+  };
+}
+
+function parseCsaSquare(square: string): { f: number; r: number } {
+  return { f: parseInt(square[0], 10), r: parseInt(square[1], 10) };
+}
+
+function parseCsaPieceKind(raw: string): PieceKind | null {
+  switch (raw) {
+    case 'FU': return '歩';
+    case 'KY': return '香';
+    case 'KE': return '桂';
+    case 'GI': return '銀';
+    case 'KI': return '金';
+    case 'KA': return '角';
+    case 'HI': return '飛';
+    case 'OU': return '玉';
+    case 'TO': return 'と';
+    case 'NY': return '成香';
+    case 'NK': return '成桂';
+    case 'NG': return '成銀';
+    case 'UM': return '馬';
+    case 'RY': return '龍';
+    default: return null;
+  }
+}
+
+function parseCsaSource(text: string): ParsedSource {
+  const board = Array.from({ length: BOARD_SIZE }, () => Array<Piece | null>(BOARD_SIZE).fill(null));
+  const hands: Hands = { B: [], W: [] };
+  const header: Record<string, string> = { 形式: 'CSA' };
+  const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  for (const line of lines) {
+    if (/^P[1-9]/.test(line)) {
+      const rank = parseInt(line[1], 10);
+      const row = line.slice(2);
+      for (let i = 0; i < BOARD_SIZE; i++) {
+        const token = row.slice(i * 3, i * 3 + 3);
+        if (token.length < 3 || token === ' * ') continue;
+        const side: Side = token[0] === '+' ? 'B' : 'W';
+        const kind = parseCsaPieceKind(token.slice(1));
+        if (!kind) continue;
+        board[rank - 1][i] = { side, kind };
+      }
+      continue;
+    }
+    if (/^P[+-]/.test(line)) {
+      const side: Side = line[1] === '+' ? 'B' : 'W';
+      const entries = line.slice(2).match(/\d{2}[A-Z]{2}/g) ?? [];
+      for (const entry of entries) {
+        const square = entry.slice(0, 2);
+        const kind = parseCsaPieceKind(entry.slice(2));
+        if (!kind) continue;
+        if (square === '00') {
+          hands[side].push(demoteKind(kind));
+        } else {
+          const { f, r } = parseCsaSquare(square);
+          board[r - 1][f - 1] = { side, kind };
+        }
+      }
+      continue;
+    }
+    if (line === '+' || line === '-') {
+      header['手番'] = line === '+' ? '先手番' : '後手番';
+    }
+  }
+  return {
+    header,
+    root: { startMoveNumber: 1, moves: [], leadVariations: [], isExpanded: true },
+    initialBoard: board,
+    initialHands: hands,
+  };
+}
+
+function parseSource(text: string, format?: 'kif' | 'sfen' | 'bod' | 'csa'): ParsedSource {
+  if (format === 'sfen') return parseSfenSource(text);
+  if (format === 'bod') return parseBodSource(text);
+  if (format === 'csa') return parseCsaSource(text);
+  const { header, root } = parseKif(text);
+  return { header, root, initialBoard: initialBoard(), initialHands: { B: [], W: [] } };
+}
+
 function numToFullWidth(n: number): string {
   if (n >= 1 && n <= 9) {
     return JP_NUM_FULL[n - 1];
@@ -523,10 +741,11 @@ export function renderKif(
   }
     const startMoveMatch = src.match(/^[\t ]*(?:[#;]|\/\/)?[\t ]*(?:start(?:-?move)?|開始手(?:数)?|表示開始手(?:数)?|初期表示手(?:数)?)[\t ]*(?:[:：=])[\t ]*(\d+)/im);
     const requestedInitialMove = startMoveMatch ? parseInt(startMoveMatch[1], 10) : undefined;
-    const { header, root } = parseKif(src);
+    const { header, root, initialBoard: parsedInitialBoard, initialHands: parsedInitialHands } = parseSource(src, options?.sourceFormat);
 
-    let board = initialBoard();
-    let hands: Hands = { B: [], W: [] };
+    const createInitialHands = (): Hands => ({ B: [...parsedInitialHands.B], W: [...parsedInitialHands.W] });
+    let board = cloneBoard(parsedInitialBoard);
+    let hands: Hands = createInitialHands();
     let lastFrom: { f: number; r: number } | undefined;
     let lastTo: { f: number; r: number } | undefined;
     let latestMove: ParsedMove | undefined;
@@ -1151,8 +1370,8 @@ export function renderKif(
       const clamped = Math.max(0, Math.min(idx, currentLine.moves.length));
       currentMoveIdx = clamped;
       lineState.set(currentLine, currentMoveIdx);
-      board = initialBoard();
-      hands = { B: [], W: [] };
+      board = cloneBoard(parsedInitialBoard);
+      hands = createInitialHands();
       lastFrom = undefined;
       lastTo = undefined;
       latestMove = undefined;
