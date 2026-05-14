@@ -1,3 +1,5 @@
+👉 [Support the project](https://buymeacoffee.com/luis8492)
+
 # ShogiView
 
 ## Overview
